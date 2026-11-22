@@ -6,6 +6,15 @@ line "<!-- tg", then 2-4 short lines in Russian for users (what is new, what is 
 then close it like any HTML comment. The release notes carry it, and the chat bot posts those lines.
 -->
 
+## [1.0.1] - 2026-11-22
+
+### Fixed
+- **A quarter keeps the kind it was visited with.** When the map servers didn't answer, a quarter got a stand-in kind, and the real answer later could turn a morning's «riverside» into evening «gardens» – with another spirit and other requests. A kind already seen on a visit now stays.
+
+<!-- tg
+Исправлено: квартал больше не меняет вид после того, как вы в нём побывали – его дух и просьбы остаются прежними
+-->
+
 ## [1.0.0] - 2026-11-22
 
 First release.

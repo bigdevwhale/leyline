@@ -199,7 +199,12 @@ class Game(private val app: Context, val scope: CoroutineScope) {
             val q = now.quarters[id] ?: run { classifying.remove(id); return@launch }
             val real = Quarters.classify(q)
             val (a, b) = real ?: Quarters.guess(q)
-            if (real != null || q.kind == null) edit { s -> s.quarters[id]?.let { s.copy(quarters = s.quarters + (id to it.copy(kind = a, second = b, guessed = real == null))) } ?: s }
+            // a stand-in never replaces a kind already there. A real answer replaces a stand-in only while the
+            // quarter hasn't been ridden through: a quarter seen as «riverside» in the morning mustn't come back
+            // as «gardens» in the evening – its spirit, requests and ingredients hang on its kind.
+            val seen = q.kind != null && q.visits > 0
+            if (real != null && seen) edit { s -> s.quarters[id]?.let { s.copy(quarters = s.quarters + (id to it.copy(guessed = false))) } ?: s }
+            else if (real != null || q.kind == null) edit { s -> s.quarters[id]?.let { s.copy(quarters = s.quarters + (id to it.copy(kind = a, second = b, guessed = real == null))) } ?: s }
             tried[id] = System.currentTimeMillis()
             classifying.remove(id)
         }
