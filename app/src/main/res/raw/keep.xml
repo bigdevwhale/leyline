@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/good_*,@drawable/rare_*,@drawable/ic_*,@drawable/crest_*,@drawable/bld_*,@drawable/ride_*,@drawable/tab_*,@drawable/hp_*,@drawable/mer_*,@drawable/cur_*,@drawable/house_*,@drawable/banner_*,@drawable/gate*,@drawable/prologue_*" />
