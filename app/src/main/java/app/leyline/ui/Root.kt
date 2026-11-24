@@ -63,6 +63,8 @@ sealed interface Over {
     class Quarter(val id: String) : Over
     class Ingredient(val id: String) : Over
     class Recipe(val id: String) : Over
+    /** By metro: the entrance or the exit station. */
+    class Station(val exit: Boolean) : Over
 }
 
 /** The tabs, for jumping between them from a sheet. */
@@ -102,7 +104,7 @@ fun Root(s: State) {
         // the screens run under the floating dock; those with their own lists leave room for it
         Box(Modifier.fillMaxSize().padding(bottom = if (!locked && (tab == 2 || tab == 3)) Dock.H else 0.dp)) {
             when {
-                s.trip != null && tab == 0 -> OnTheWay(s, locked)
+                s.trip != null && tab == 0 -> OnTheWay(s, locked) { over = it }
                 tab == 0 -> Tower(s) { over = it }
                 tab == 1 -> LeyMap(s) { over = it }
                 tab == 2 -> Grimoire(s) { over = it }
@@ -133,6 +135,7 @@ fun Root(s: State) {
             is Over.Quarter -> QuarterSheet(s, o.id, open = { over = it }) { over = null }
             is Over.Ingredient -> IngredientSheet(s, o.id) { over = null }
             is Over.Recipe -> RecipeSheet(s, o.id) { over = null }
+            is Over.Station -> StationSheet(s, o.exit) { over = null }
         }
         // each screen introduces itself once; «?» brings it back
         if (!locked) introFor(tab, over, s.trip != null)?.let { i ->

@@ -14,6 +14,7 @@ import app.leyline.domain.Rand
 import app.leyline.domain.Recipe
 import app.leyline.domain.hash
 import app.leyline.domain.Lore
+import app.leyline.domain.Metro
 import app.leyline.domain.Mount
 import app.leyline.domain.Mounts
 import app.leyline.domain.Omen
@@ -21,6 +22,7 @@ import app.leyline.domain.Quarters
 import app.leyline.domain.Ride
 import app.leyline.domain.Sanctum
 import app.leyline.domain.Sanctums
+import app.leyline.domain.Station
 import app.leyline.domain.zone
 import app.leyline.domain.Sky
 import app.leyline.domain.Spirits
@@ -229,7 +231,8 @@ class Game(private val app: Context, val scope: CoroutineScope) {
 
     suspend fun startTrip(ride: Ride) {
         val t = System.currentTimeMillis()
-        val f = live.value.fix?.takeIf { t - it.time < 10 * 60_000L }
+        // the metro's entrance is found by the trip service, snapped to a station: an old fix would be the street before
+        val f = live.value.fix?.takeIf { t - it.time < 10 * 60_000L && ride != Ride.METRO }
         edit { s ->
             if (s.trip != null) return@edit s
             val b = ride.beast.id
@@ -285,7 +288,8 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         if (trip.lastAt > 0) {
             val d = Geo.distance(trip.lastLat, trip.lastLon, f.lat, f.lon)
             val dt = (f.time - trip.lastAt) / 1000.0
-            if (dt > 150 && d > 800) underground = 1
+            // a gap in the fixes and a jump: the way went under the ground. By metro any jump is, however quick
+            if (if (Ride.of(trip.ride) == Ride.METRO) d > 300 else dt > 150 && d > 800) underground = 1
             // noise under 25 m (or twice the fix's own error) is left; a car can't jump faster than 60 m/s;
             // a phone lying still by the satellites' own word hasn't gone anywhere, however the dot drifts
             val lying = f.speed != null && f.speed < 0.5 && d < 150
@@ -345,7 +349,71 @@ class Game(private val app: Context, val scope: CoroutineScope) {
     fun idle(nowMs: Long = System.currentTimeMillis()): Boolean {
         val t = now.trip ?: return false
         val since = if (t.lastAt > 0) t.lastAt else t.start
-        return nowMs - since > 8 * 60_000L
+        // under the ground there are no fixes to tell standing from riding: a metro ride waits for «Arrived»
+        // (or for the exit's position), and gives up only after a long while
+        return nowMs - since > if (Ride.of(t.ride) == Ride.METRO) METRO_MAX else 8 * 60_000L
+    }
+
+    private val METRO_MAX = 4 * 3600_000L
+
+    // ---------- the metro: stations instead of the GPS ----------
+
+    private var stationsLoading = false
+
+    /** The city's stations, loaded once around home (again after a month, or a day when none were found). */
+    suspend fun stations(): List<Station> {
+        val s = now
+        val t = System.currentTimeMillis()
+        if (s.stationsAt > 0 && t - s.stationsAt < 30 * 86_400_000L) return s.stations
+        val lat = if (s.homeLat != 0.0) s.homeLat else live.value.fix?.lat ?: return s.stations
+        val lon = if (s.homeLon != 0.0) s.homeLon else live.value.fix?.lon ?: return s.stations
+        if (stationsLoading) return s.stations
+        stationsLoading = true
+        try {
+            val got = Metro.around(lat, lon) ?: return s.stations
+            edit { it.copy(stations = got, stationsAt = if (got.isEmpty()) t - 29 * 86_400_000L else t) }
+            return got
+        } finally { stationsLoading = false }
+    }
+
+    /** The station a metro ride began at, when known. */
+    fun metroStart(): Station? = now.trip?.takeIf { it.lastAt > 0 }?.let { Metro.nearest(now.stations, it.firstLat, it.firstLon, 50.0) }
+
+    /** A position near a station becomes the station itself. */
+    private fun snap(lat: Double, lon: Double): Pair<Double, Double> =
+        Metro.nearest(now.stations, lat, lon)?.let { it.lat to it.lon } ?: (lat to lon)
+
+    /**
+     * Where a metro ride began: a station picked by hand, or the position found at the entrance ([auto]; it never
+     * overrides a start already known).
+     */
+    suspend fun metroFrom(lat: Double, lon: Double, auto: Boolean = false) {
+        val t = now.trip ?: return
+        if (Ride.of(t.ride) != Ride.METRO) return
+        val (la, lo) = snap(lat, lon)
+        if (t.lastAt == 0L) {
+            // timed at the start, so the way to the exit is never too fast to count
+            onFix(Fix(la, lo, 5f, t.start, speed = 0f, simulated = true))
+            return
+        }
+        if (auto) return
+        // a different station than the one found: the ride starts there instead
+        edit { s ->
+            val tt = s.trip ?: return@edit s
+            val lat0 = if (s.homeLat != 0.0) s.homeLat else la
+            val lon0 = if (s.homeLon != 0.0) s.homeLon else lo
+            val c = Ley.cell(lat0, lon0, la, lo)
+            s.copy(lastCell = c.key, cells = if (c.key == s.lastCell) s.cells else s.cells + (c.key to (s.cells[c.key] ?: 0) + 1),
+                trip = tt.copy(firstLat = la, firstLon = lo, lastLat = la, lastLon = lo, pts = listOf(la to lo)))
+        }
+        Quarters.at(now.quarters.values, la, lo)?.let { q -> if (now.trip?.quarters?.lastOrNull() != q.id) enter(q.id) }
+    }
+
+    /** The exit of a metro ride: one position (or a station picked), then the ride is over. */
+    suspend fun metroEnd(lat: Double, lon: Double): Trip? {
+        val (la, lo) = snap(lat, lon)
+        if (now.trip != null) onFix(Fix(la, lo, 5f, System.currentTimeMillis(), speed = 0f, simulated = true))
+        return endTrip()
     }
 
     /** A driver in motion sees only the road. */

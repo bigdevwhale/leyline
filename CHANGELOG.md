@@ -6,6 +6,19 @@ line "<!-- tg", then 2-4 short lines in Russian for users (what is new, what is 
 then close it like any HTML comment. The release notes carry it, and the chat bot posts those lines.
 -->
 
+## [1.1.0] - 2026-11-24
+
+### Changed
+- **The metro needs no GPS.** A ride by metro takes one position at the entrance and one at «Arrived», and the GPS sleeps in between instead of hunting for satellites under the ground. When a position can't be found, the station is picked from a list of the city's stations (from OpenStreetMap, nearest first, with search).
+
+### Fixed
+- **Long metro rides are no longer lost.** With no fixes under the ground, a metro ride ended itself after eight minutes at the entrance and was thrown away as too short. It now waits for the exit.
+
+<!-- tg
+Метро без GPS: приложение отмечает вход и выход, а между ними не тратит батарейку. Если сигнала нет – станцию можно выбрать из списка
+Исправлено: поездки в метро дольше 8 минут больше не пропадают
+-->
+
 ## [1.0.1] - 2026-11-22
 
 ### Fixed

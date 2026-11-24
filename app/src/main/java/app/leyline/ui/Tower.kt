@@ -244,7 +244,7 @@ private fun SpiritLine(s: State, open: (Over) -> Unit) {
 
 /** A ride is on: a calm screen with the beast, the kilometres and what the road has given so far. */
 @Composable
-fun OnTheWay(s: State, locked: Boolean) {
+fun OnTheWay(s: State, locked: Boolean, open: (Over) -> Unit = {}) {
     val c = LocalContext.current.container
     val t = s.trip ?: return
     val live by c.game.live.collectAsState()
@@ -272,10 +272,26 @@ fun OnTheWay(s: State, locked: Boolean) {
                     got.forEach { (k, n) -> Row(verticalAlignment = Alignment.CenterVertically) { Pic(Book.ing(k).pic, Modifier.size(34.dp)); Text("×$n", style = T.smallB.copy(color = Color(0xFFF7EDDC))) } }
                 }
                 Spacer(Modifier.height(16.dp))
-                Btn(tr("Приехали", "Arrived"), Modifier.fillMaxWidth()) { TripService.stop(c.app) }
-                Text(tr("Можно убрать телефон: поездка идёт и с выключенным экраном. Постоите 8 минут – закончится сама.",
-                    "You can pocket the phone: the ride goes on with the screen off. Stand still for 8 minutes and it ends by itself."),
-                    style = T.tiny.copy(color = Color(0xFFB8A3B4)), textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+                if (ride == Ride.METRO) {
+                    // under the ground: no GPS, the stations at both ends
+                    val st = c.game.metroStart()
+                    Text(when {
+                        st != null -> tr("Вход: «${st.ru}»", "In at: ${st.en}")
+                        t.lastAt > 0 -> tr("Вход отмечен", "The entrance is marked")
+                        else -> tr("Вход ещё не найден", "The entrance isn't found yet")
+                    }, style = T.smallB.copy(color = Color(0xFFF7EDDC)), textAlign = TextAlign.Center)
+                    Ghost(if (t.lastAt > 0) tr("Другая станция", "Another station") else tr("Выбрать станцию", "Pick the station"), color = Color(0xFFFFD27A)) { open(Over.Station(exit = false)) }
+                    Spacer(Modifier.height(6.dp))
+                    Btn(tr("Приехали", "Arrived"), Modifier.fillMaxWidth()) { open(Over.Station(exit = true)) }
+                    Text(tr("GPS спит до выхода, батарейка отдыхает. На выходе нажмите «Приехали» – из приложения или из уведомления.",
+                        "The GPS sleeps till the exit and the battery rests. Out there tap «Arrived» – here or in the notification."),
+                        style = T.tiny.copy(color = Color(0xFFB8A3B4)), textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+                } else {
+                    Btn(tr("Приехали", "Arrived"), Modifier.fillMaxWidth()) { TripService.stop(c.app) }
+                    Text(tr("Можно убрать телефон: поездка идёт и с выключенным экраном. Постоите 8 минут – закончится сама.",
+                        "You can pocket the phone: the ride goes on with the screen off. Stand still for 8 minutes and it ends by itself."),
+                        style = T.tiny.copy(color = Color(0xFFB8A3B4)), textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+                }
                 Spacer(Modifier.height(Dock.H))
             } else {
                 Text(tr("Смотрите на дорогу. Всё самое интересное – после остановки.", "Eyes on the road. Everything interesting waits for the stop."),
@@ -310,7 +326,7 @@ fun RidesSheet(s: State, onDismiss: () -> Unit) {
             }
         }
         Spacer(Modifier.height(6.dp))
-        Text(tr("Поездка закончится сама, если постоять 8 минут, или по кнопке «Приехали». Машину по Bluetooth можно выбрать в настройках.",
-            "The ride ends by itself after 8 still minutes, or with «Arrived». The car's Bluetooth can be chosen in settings."), style = T.tiny)
+        Text(tr("Поездка закончится сама, если постоять 8 минут, или по кнопке «Приехали». В метро GPS не нужен: хватит станций входа и выхода. Машину по Bluetooth можно выбрать в настройках.",
+            "The ride ends by itself after 8 still minutes, or with «Arrived». The metro needs no GPS: the stations in and out are enough. The car's Bluetooth can be chosen in settings."), style = T.tiny)
     }
 }

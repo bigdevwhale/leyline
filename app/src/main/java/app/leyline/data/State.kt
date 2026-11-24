@@ -3,6 +3,7 @@ package app.leyline.data
 import app.leyline.domain.Kind
 import app.leyline.domain.Mount
 import app.leyline.domain.Sanctum
+import app.leyline.domain.Station
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -123,6 +124,9 @@ data class State(
     val decor: Set<String> = emptySet(),
     /** The day the blooming quarter last gave its gift. */
     val bloomDay: Long = 0,
+    /** The underground's stations around home, for rides by metro, and when they were loaded. */
+    val stations: List<Station> = emptyList(),
+    val stationsAt: Long = 0,
 ) {
     fun has(ing: String) = bag[ing] ?: 0
     fun friends() = spirits.filterValues { it >= 4 }.keys
@@ -176,6 +180,10 @@ fun Sanctum.json() = JSONObject().put("id", id).put("lat", lat).put("lon", lon).
 fun sanctumOf(o: JSONObject) = Sanctum(o.getLong("id"), o.getDouble("lat"), o.getDouble("lon"), o.optInt("visits", 1), o.str("name"),
     o.str("ward"), o.optInt("wardLevel"), o.optLong("since"))
 
+fun Station.json() = JSONObject().put("ru", ru).put("en", en).put("lat", lat).put("lon", lon)
+
+fun stationOf(o: JSONObject) = Station(o.str("ru"), o.str("en"), o.getDouble("lat"), o.getDouble("lon"))
+
 fun State.json(): JSONObject = JSONObject()
     .put("v", 1).put("onboarded", onboarded).put("homeLat", homeLat).put("homeLon", homeLon)
     .put("quarters", JSONArray(quarters.values.map { it.json() })).put("here", here).put("power", power)
@@ -189,6 +197,7 @@ fun State.json(): JSONObject = JSONObject()
     .put("told", JSONArray(told.toList())).put("theme", theme).put("voice", voice).put("ride", ride).put("nextId", nextId)
     .put("btAddr", btAddr).put("btName", btName).put("reach", reach).put("placesV", 2).put("aurora", aurora).put("mirror", mirror).put("great", great).put("lastCell", lastCell)
     .put("tried", JSONArray(tried.toList())).put("decor", JSONArray(decor.toList())).put("bloomDay", bloomDay)
+    .put("stations", JSONArray(stations.map { it.json() })).put("stationsAt", stationsAt)
 
 fun stateOf(o: JSONObject) = State(
     onboarded = o.optBoolean("onboarded"), homeLat = o.optDouble("homeLat", 0.0), homeLon = o.optDouble("homeLon", 0.0),
@@ -205,4 +214,5 @@ fun stateOf(o: JSONObject) = State(
     reach = if (o.optInt("placesV", 1) < 2 || (o.optJSONArray("quarters")?.length() ?: 0) == 0) 0 else o.optInt("reach", 9000),
     aurora = o.optBoolean("aurora"), mirror = o.optBoolean("mirror"), great = o.optBoolean("great"), lastCell = o.str("lastCell"),
     tried = o.optJSONArray("tried").strings().toSet(), decor = o.optJSONArray("decor").strings().toSet(), bloomDay = o.optLong("bloomDay"),
+    stations = o.optJSONArray("stations").list(::stationOf), stationsAt = o.optLong("stationsAt"),
 )

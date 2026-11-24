@@ -8,6 +8,11 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * One GPS subscription shared by the screen (to know the quarter) and the trip service. Plain
@@ -51,6 +56,44 @@ class Feed(private val context: Context, private val deliver: (Fix) -> Unit) {
         if (!permitted()) null else lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) }
             .filter { System.currentTimeMillis() - it.time < 6 * 3600_000L }.minByOrNull { it.accuracy }?.let(::fix)
     } catch (_: SecurityException) { null }
+
+    /**
+     * One position, without keeping the GPS on: listens for at most [ms] and gives the best fix it heard (or a
+     * fresh one the phone already had), stopping early at one within [good] metres. Null when nothing came –
+     * deep under the ground, say.
+     */
+    suspend fun once(ms: Long, good: Float = 30f): Fix? {
+        if (app.leyline.BuildConfig.DEMO || !permitted()) return null
+        var best: Fix? = last()?.takeIf { System.currentTimeMillis() - it.time < 60_000 }
+        if (best != null && best.accuracy <= good) return best
+        val heard = Channel<Fix>(Channel.UNLIMITED)
+        val l = object : LocationListener {
+            override fun onLocationChanged(location: Location) { heard.trySend(fix(location)) }
+            override fun onProviderEnabled(provider: String) {}
+            override fun onProviderDisabled(provider: String) {}
+            @Deprecated("Deprecated in Java")
+            override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+        }
+        try {
+            withContext(Dispatchers.Main) {
+                val providers = lm.getProviders(true)
+                for (p in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER))
+                    if (p in providers) lm.requestLocationUpdates(p, 1000L, 0f, l, Looper.getMainLooper())
+            }
+            withTimeoutOrNull(ms) {
+                for (f in heard) {
+                    val b = best
+                    if (b == null || f.accuracy < b.accuracy) best = f
+                    if (f.accuracy <= good) break
+                }
+            }
+        } catch (_: SecurityException) {
+        } catch (_: IllegalArgumentException) {
+        } finally {
+            withContext(NonCancellable + Dispatchers.Main) { lm.removeUpdates(l) }
+        }
+        return best
+    }
 
     private fun start() {
         if (app.leyline.BuildConfig.DEMO || !permitted()) return
