@@ -45,7 +45,7 @@ fun introFor(tab: Int, over: Over?, trip: Boolean): Intro? = when (over) {
     is Over.Recipe, is Over.Ingredient, is Over.Quarter, is Over.Station, Over.Spirits, Over.Omen, Over.Sigil, Over.Journal, Over.Settings, Over.Cozy -> null
     Over.Rides -> Intro("i.rides", "ic_compass", tr("В путь", "Setting off"), listOf(
         "mount_car_baby" to tr("Выберите, как едете. Первая поездка каждым способом выведет нового зверя.", "Pick how you ride. The first ride each way hatches a new beast."),
-        "ic_hourglass" to tr("За рулём экран отдыхает: всё важное – после остановки. Поездка закончится сама, если постоять 8 минут.", "Driving, the screen rests: everything waits for the stop. The ride ends by itself after 8 still minutes.")))
+        "ic_hourglass" to tr("За рулём экран отдыхает: всё важное – после остановки. Поездка закончится сама, если постоять 20 минут.", "Driving, the screen rests: everything waits for the stop. The ride ends by itself after 20 still minutes.")))
     null -> when (tab) {
         0 -> if (trip) Intro("i.ontrip", "ic_compass", tr("В пути", "On the way"), listOf(
             "ing_wind" to tr("Ветер, камни пробок и лунная пыль копятся прямо в пути.", "Wind, jam stones and moon dust gather right on the way."),

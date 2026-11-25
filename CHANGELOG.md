@@ -6,6 +6,15 @@ line "<!-- tg", then 2-4 short lines in Russian for users (what is new, what is 
 then close it like any HTML comment. The release notes carry it, and the chat bot posts those lines.
 -->
 
+## [1.1.2] - 2026-11-25
+
+### Fixed
+- **A long ride is no longer cut short.** A ride ended itself after 8 minutes without a good position, so a long jam or a stretch where the GPS went quiet lost the rest of the ride (25 km counted as 3). It now waits 20 minutes standing still (as long as a jam counts), 45 minutes when the phone hears no satellites at all, and rough positions that show the ride moving keep it going. The ride still ends where it last moved (#1).
+
+<!-- tg
+Исправлено: долгая поездка больше не обрывается сама через 8 минут. Теперь она ждёт 20 минут на месте и 45 минут, если пропал GPS, а заканчивается там, где вы остановились
+-->
+
 ## [1.1.1] - 2026-11-25
 
 ### Added

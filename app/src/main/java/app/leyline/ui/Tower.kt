@@ -289,8 +289,8 @@ fun OnTheWay(s: State, locked: Boolean, open: (Over) -> Unit = {}) {
                         style = T.tiny.copy(color = Color(0xFFB8A3B4)), textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
                 } else {
                     Btn(tr("Приехали", "Arrived"), Modifier.fillMaxWidth()) { TripService.stop(c.app) }
-                    Text(tr("Можно убрать телефон: поездка идёт и с выключенным экраном. Постоите 8 минут – закончится сама.",
-                        "You can pocket the phone: the ride goes on with the screen off. Stand still for 8 minutes and it ends by itself."),
+                    Text(tr("Можно убрать телефон: поездка идёт и с выключенным экраном. Постоите 20 минут – закончится сама.",
+                        "You can pocket the phone: the ride goes on with the screen off. Stand still for 20 minutes and it ends by itself."),
                         style = T.tiny.copy(color = Color(0xFFB8A3B4)), textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
                 }
                 Spacer(Modifier.navigationBarsPadding().height(Dock.H))
@@ -327,7 +327,7 @@ fun RidesSheet(s: State, onDismiss: () -> Unit) {
             }
         }
         Spacer(Modifier.height(6.dp))
-        Text(tr("Поездка закончится сама, если постоять 8 минут, или по кнопке «Приехали». В метро GPS не нужен: хватит станций входа и выхода. Машину по Bluetooth можно выбрать в настройках.",
-            "The ride ends by itself after 8 still minutes, or with «Arrived». The metro needs no GPS: the stations in and out are enough. The car's Bluetooth can be chosen in settings."), style = T.tiny)
+        Text(tr("Поездка закончится сама, если постоять 20 минут, или по кнопке «Приехали». В метро GPS не нужен: хватит станций входа и выхода. Машину по Bluetooth можно выбрать в настройках.",
+            "The ride ends by itself after 20 still minutes, or with «Arrived». The metro needs no GPS: the stations in and out are enough. The car's Bluetooth can be chosen in settings."), style = T.tiny)
     }
 }
