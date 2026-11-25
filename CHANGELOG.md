@@ -6,6 +6,22 @@ line "<!-- tg", then 2-4 short lines in Russian for users (what is new, what is 
 then close it like any HTML comment. The release notes carry it, and the chat bot posts those lines.
 -->
 
+## [1.1.1] - 2026-11-25
+
+### Added
+- **Storm water and hoarfrost where the weather never brings them.** A strong wind (30 km/h and up) gives storm water, a cold night (+10° and below) gives hoarfrost, and the cauldron distils 4 of one ingredient into one of the sky's: storm water, hoarfrost or sun amber (#3).
+
+### Fixed
+- **The metro's stations load.** The busy public map servers rarely answered the old heavy question in time; the stations are now asked with a light one, given time, loaded ahead at start and kept for a month. The picker says what went wrong and can try again (#4).
+- **«Reading the map along the way» no longer spins forever.** A slow answer kept the request hanging past its time limit, and a reading cut short when the app was closed was never tried again.
+- **The text at the bottom is readable.** The floating dock no longer covers the last lines on phones with on-screen buttons (#2).
+
+<!-- tg
+Станции метро снова загружаются, а если карта не ответила – можно попробовать ещё раз
+Грозовая вода и иней теперь есть и там, где не бывает дождя и снега: от сильного ветра, холодной ночью и перегонкой в котле (4 одинаковых → 1)
+Исправлено: «Читаем карту вдоль пути» больше не крутится бесконечно, а текст внизу экрана не прячется под панелью
+-->
+
 ## [1.1.0] - 2026-11-24
 
 ### Changed

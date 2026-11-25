@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.leyline.container
+import app.leyline.data.Game
 import app.leyline.data.State
 import app.leyline.domain.Metro
 import app.leyline.domain.Station
@@ -48,14 +50,17 @@ fun StationSheet(s: State, exit: Boolean, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     val from = !exit || t.lastAt == 0L
     var query by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(s.stations.isEmpty()) }
     var seeking by remember { mutableStateOf(true) }
     var here by remember { mutableStateOf<Fix?>(null) }
-    LaunchedEffect(Unit) { g.stations(); loading = false }
+    // null while loading; asked again on «Try again», or once the phone finds itself when nothing else said where
+    var load by remember { mutableStateOf<Game.StationsLoad?>(null) }
+    var tries by remember { mutableIntStateOf(0) }
+    LaunchedEffect(tries) { load = null; load = g.stations(here?.lat, here?.lon) }
     LaunchedEffect(from) {
         seeking = true
         here = c.feed.once(25_000)?.takeIf { it.accuracy <= Metro.GOOD }
         seeking = false
+        if (here != null && load == Game.StationsLoad.NO_PLACE) tries++
     }
     val near = here?.let { Metro.nearest(s.stations, it.lat, it.lon) }
 
@@ -88,10 +93,19 @@ fun StationSheet(s: State, exit: Boolean, onDismiss: () -> Unit) {
             ?: (s.homeLat to s.homeLon).takeIf { it.first != 0.0 }
         val list = Metro.pick(s.stations, query, ref?.first, ref?.second).take(40)
         when {
-            loading && s.stations.isEmpty() -> Text(tr("Загружаю станции…", "Loading the stations…"), style = T.small)
-            s.stations.isEmpty() -> Text(tr("Станций не нашлось: нужен интернет, или в городе нет метро.", "No stations found: the network is needed, or the city has no metro."), style = T.small)
+            s.stations.isEmpty() -> when (load) {
+                null -> Text(tr("Загружаю станции…", "Loading the stations…"), style = T.small)
+                Game.StationsLoad.NO_PLACE -> Text(if (seeking) tr("Ищу, в каком вы городе…", "Finding which city you're in…")
+                    else tr("Не знаю, в каком вы городе: спутников не слышно. Поднимитесь к выходу и попробуйте ещё раз.",
+                        "I don't know which city you're in: no satellites to be heard. Go up to the exit and try again."), style = T.small)
+                Game.StationsLoad.NO_NET -> Text(tr("Сервер карты не ответил – он бывает перегружен. Попробуйте ещё раз через минуту.",
+                    "The map's server didn't answer – it's often busy. Try again in a minute."), style = T.small)
+                Game.StationsLoad.OK -> Text(tr("Вокруг не нашлось станций метро.", "No metro stations found around."), style = T.small)
+            }
             list.isEmpty() -> Text(tr("Такой станции нет.", "No such station."), style = T.small)
         }
+        if (s.stations.isEmpty() && (load == Game.StationsLoad.NO_NET || (load == Game.StationsLoad.NO_PLACE && !seeking)))
+            Ghost(tr("Попробовать ещё раз", "Try again")) { tries++ }
         list.forEach { st -> StationRow(st, here) { choose(st.lat, st.lon) } }
         if (exit) {
             Spacer(Modifier.height(6.dp))

@@ -36,8 +36,9 @@ object Lore {
         val line = thin(pts)
         if (line.size < 2) return emptyMap()
         val l = line.joinToString(",") { String.format(Locale.US, "%.5f,%.5f", it.first, it.second) }
-        val q = "[out:json][timeout:50];" + QS.joinToString("") { "(${it.parts.replace("R,L", "${it.radius},$l")});out count;" }
-        val js = kotlinx.coroutines.withTimeoutOrNull(45_000) { Quarters.ask(q, 40_000) } ?: return null
+        // a busy public server keeps even a light question waiting half a minute and more
+        val q = "[out:json][timeout:80];" + QS.joinToString("") { "(${it.parts.replace("R,L", "${it.radius},$l")});out count;" }
+        val js = Quarters.ask(q, 90_000) ?: return null
         val els = js.optJSONArray("elements") ?: return null
         if (els.length() < QS.size) return null
         return QS.mapIndexed { i, x ->

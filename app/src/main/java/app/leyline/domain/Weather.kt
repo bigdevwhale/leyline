@@ -10,13 +10,20 @@ import java.util.Locale
 
 /** The weather at the end of a ride, from Open-Meteo (no key). */
 object Weather {
-    /** [sky]: "rain", "snow", "fog", "clear", "cloud" or "" without the network; [temp] in °C. */
-    data class Now(val sky: String, val temp: Double?)
+    /** [sky]: "rain", "snow", "fog", "clear", "cloud" or "" without the network; [temp] in °C; [wind] in km/h. */
+    data class Now(val sky: String, val temp: Double?, val wind: Double? = null) {
+        /** A wind that bends the trees: storm water for places where it hardly ever rains. */
+        val windy get() = (wind ?: 0.0) >= WINDY
+    }
+
+    const val WINDY = 30.0
+    /** A night this cold leaves hoarfrost in warm countries too. */
+    const val COLD_NIGHT = 10.0
 
     suspend fun now(lat: Double, lon: Double): Now = withTimeoutOrNull(6000) {
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = String.format(Locale.US, "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&current=weather_code,temperature_2m", lat, lon)
+                val url = String.format(Locale.US, "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&current=weather_code,temperature_2m,wind_speed_10m", lat, lon)
                 val c = URL(url).openConnection() as HttpURLConnection
                 c.connectTimeout = 4000; c.readTimeout = 4000
                 c.setRequestProperty("User-Agent", "Leyline (app.leyline)")
@@ -29,7 +36,7 @@ object Weather {
                     in 71..77, 85, 86 -> "snow"
                     else -> "cloud"
                 }
-                Now(sky, cur.optDouble("temperature_2m").takeIf { !it.isNaN() })
+                Now(sky, cur.optDouble("temperature_2m").takeIf { !it.isNaN() }, cur.optDouble("wind_speed_10m").takeIf { !it.isNaN() })
             }.getOrDefault(Now("", null))
         }
     } ?: Now("", null)

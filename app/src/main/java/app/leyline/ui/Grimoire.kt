@@ -241,6 +241,8 @@ fun RecipeSheet(s: State, id: String, onDismiss: () -> Unit) {
 fun IngredientSheet(s: State, id: String, onDismiss: () -> Unit) {
     val ing = Book.ing(id)
     val seen = id in s.seen
+    val g = LocalGame
+    val scope = rememberCoroutineScope()
     Sheet(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Pic(if (seen) ing.pic else "pot_unknown", Modifier.size(84.dp))
@@ -255,6 +257,15 @@ fun IngredientSheet(s: State, id: String, onDismiss: () -> Unit) {
         Text(ing.how, style = T.body)
         Spirits.all.firstOrNull { it.ing == id }?.let { sp -> Text(tr("Им богаты кварталы вида «${sp.kind.ru}». ", "Quarters of the «${sp.kind.en}» kind are rich in it.") , style = T.small, modifier = Modifier.padding(top = 4.dp)) }
         if (app.leyline.domain.Omen.of() == id) Text(tr("Сегодня это знак дня: его вдвое больше!", "It's today's omen: twice as much!"), style = T.smallB.copy(color = C.teal), modifier = Modifier.padding(top = 4.dp))
+        // the sky's ingredients: where the weather never brings them, the cauldron distils them
+        if (id in Book.WEATHER) {
+            val from = Book.distilFrom(s.bag, id)
+            Text(tr("Нет такой погоды? Котёл перегонит ${Book.DISTIL} одинаковых ингредиента в один такой.",
+                "No such weather where you live? The cauldron distils ${Book.DISTIL} of one ingredient into one of these."), style = T.small, modifier = Modifier.padding(top = 8.dp))
+            Btn(if (from != null) tr("Перегнать ${Book.DISTIL} × ${Book.ing(from).ru}", "Distil ${Book.DISTIL} × ${Book.ing(from).en}")
+                else tr("Нужно ${Book.DISTIL} одинаковых", "Needs ${Book.DISTIL} of one kind"),
+                Modifier.fillMaxWidth().padding(top = 6.dp), enabled = from != null, small = true) { scope.launch { g.distil(id) } }
+        }
         Ornament()
         Text(tr("Идёт в зелья", "Goes into"), style = T.h3)
         val uses = Book.recipes.filter { id in it.needs && it.id != "great" }

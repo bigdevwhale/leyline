@@ -191,8 +191,8 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         if (s.onboarded && s.reach < Quarters.RINGS.last()) grow(s.homeLat, s.homeLon)
         s.quarters[s.here]?.takeIf { it.kind == null || (it.guessed && System.currentTimeMillis() - (tried[it.id] ?: 0) > 3 * 3600_000L) }?.let { classify(it.id) }
         s.trip?.quarters?.distinct()?.forEach { id -> if (s.quarters[id]?.kind == null) classify(id) }
-        // rides whose map reading failed get another go
-        s.trips.filter { it.osm == 2 && System.currentTimeMillis() - it.end < 3 * 86_400_000L }.take(3).forEach { enrich(it.start) }
+        // rides whose map reading failed get another go – and those whose reading was cut short when the app was closed
+        s.trips.filter { it.osm != 1 && System.currentTimeMillis() - it.end < 3 * 86_400_000L }.take(3).forEach { enrich(it.start) }
     }
 
     private fun classify(id: String) {
@@ -358,22 +358,28 @@ class Game(private val app: Context, val scope: CoroutineScope) {
 
     // ---------- the metro: stations instead of the GPS ----------
 
-    private var stationsLoading = false
+    /** One load at a time: a second asker (the picker while the ride's own load is under way) waits for it. */
+    private val stationsLock = Mutex()
 
-    /** The city's stations, loaded once around home (again after a month, or a day when none were found). */
-    suspend fun stations(): List<Station> {
+    /** How loading the stations went: loaded (the list may be empty – no metro), nowhere to load around, no answer. */
+    enum class StationsLoad { OK, NO_PLACE, NO_NET }
+
+    /**
+     * The city's stations, loaded once around home (again after a month, or a day when none were found). Without
+     * a home: around the phone, or [lat], [lon], or where the ride began.
+     */
+    suspend fun stations(lat: Double? = null, lon: Double? = null): StationsLoad = stationsLock.withLock {
         val s = now
         val t = System.currentTimeMillis()
-        if (s.stationsAt > 0 && t - s.stationsAt < 30 * 86_400_000L) return s.stations
-        val lat = if (s.homeLat != 0.0) s.homeLat else live.value.fix?.lat ?: return s.stations
-        val lon = if (s.homeLon != 0.0) s.homeLon else live.value.fix?.lon ?: return s.stations
-        if (stationsLoading) return s.stations
-        stationsLoading = true
-        try {
-            val got = Metro.around(lat, lon) ?: return s.stations
-            edit { it.copy(stations = got, stationsAt = if (got.isEmpty()) t - 29 * 86_400_000L else t) }
-            return got
-        } finally { stationsLoading = false }
+        if (s.stationsAt > 0 && t - s.stationsAt < 30 * 86_400_000L) return@withLock StationsLoad.OK
+        val at = (s.homeLat to s.homeLon).takeIf { it.first != 0.0 }
+            ?: live.value.fix?.let { it.lat to it.lon }
+            ?: (if (lat != null && lon != null) lat to lon else null)
+            ?: s.trip?.takeIf { it.lastAt > 0 }?.let { it.firstLat to it.firstLon }
+            ?: return@withLock StationsLoad.NO_PLACE
+        val got = Metro.around(at.first, at.second) ?: return@withLock StationsLoad.NO_NET
+        edit { it.copy(stations = got, stationsAt = if (got.isEmpty()) t - 29 * 86_400_000L else t) }
+        StationsLoad.OK
     }
 
     /** The station a metro ride began at, when known. */
@@ -431,7 +437,9 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         if (t.night) add("moon", ((1 + t.km / 5).toInt().coerceAtMost(3)) * (if (t.fullMoon) 2 else 1))
         if (t.twilight) add("dawn", 2)
         when (wx.sky) { "rain" -> add("storm", 2); "snow" -> add("frost", 2); "fog" -> add("mist", 1); "clear" -> if (!t.night) add("sun", 2) }
-        if (wx.temp != null && wx.temp < 0 && wx.sky != "snow") add("frost", 1)
+        // where it hardly ever rains or snows: the wind brings storm water, a cold night leaves hoarfrost
+        if (wx.windy && wx.sky != "rain") add("storm", 1)
+        if (wx.temp != null && wx.sky != "snow" && (wx.temp < 0 || (t.night && wx.temp <= Weather.COLD_NIGHT))) add("frost", 1)
         if (ride == Ride.METRO || t.underground > 0) add("ore", (2 + t.km / 5).toInt().coerceAtMost(4))
         // cities without an underground: the forges' furnaces after dark give a little deep ore too
         else if (t.night && t.quarters.any { s.quarters[it]?.kind == Kind.FORGE }) add("ore", if (t.km >= 5) 2 else 1)
@@ -527,7 +535,7 @@ class Game(private val app: Context, val scope: CoroutineScope) {
             // the beast
             val b = t.beast.id
             val m0 = s.mounts[b] ?: Mount(b, born = t.start)
-            val wet = wx.sky == "rain" || wx.sky == "snow"
+            val wet = wx.sky == "rain" || wx.sky == "snow" || wx.windy
             val m = m0.copy(km = m0.km + xp, rides = m0.rides + 1, nightKm = m0.nightKm + if (t.night) t.km else 0.0,
                 wetRides = m0.wetRides + if (wet) 1 else 0, fastKm = m0.fastKm + t.fastMeters / 1000, jamMin = m0.jamMin + t.jamSec / 60,
                 newCells = m0.newCells + t.newCells, lastRide = end)
@@ -650,6 +658,21 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         }
         if (ok) news.tryEmit(News(tr("Сварено: ${r.ru}", "Brewed: ${r.en}")))
         return ok
+    }
+
+    /** Distils one of the sky's ingredients ([Book.WEATHER]) from [Book.DISTIL] of the one there is most of. */
+    suspend fun distil(target: String): Boolean {
+        var from: String? = null
+        edit { s ->
+            val src = Book.distilFrom(s.bag, target) ?: return@edit s
+            from = src
+            val bag = s.bag.toMutableMap()
+            bag[src] = (bag[src] ?: 0) - Book.DISTIL
+            bag[target] = (bag[target] ?: 0) + 1
+            s.copy(bag = bag.filterValues { it > 0 }, seen = s.seen + target)
+        }
+        from?.let { news.tryEmit(News(tr("Перегнано: ${Book.ing(it).ru} → ${Book.ing(target).ru}", "Distilled: ${Book.ing(it).en} → ${Book.ing(target).en}"))) }
+        return from != null
     }
 
     /** What an experiment came to. */

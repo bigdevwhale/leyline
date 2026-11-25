@@ -96,13 +96,15 @@ fun Root(s: State) {
     val locked = s.trip?.let { app.leyline.domain.Ride.of(it.ride).driver } == true && live.moving
     var toast by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { c.game.news.collect { toast = it.text } }
+    // the metro's stations are loaded ahead, while there is a network and time: underground there may be neither
+    LaunchedEffect(s.homeLat) { if (s.homeLat != 0.0) c.game.stations() }
     LaunchedEffect(toast) { if (toast != null) { delay(2600); toast = null } }
     LaunchedEffect(finished) { finished?.let { over = Over.TripPage(it); Nav.tab = 0; c.game.finished.value = null } }
     BackHandler(tab != 0 && over == null) { Nav.tab = 0 }
 
     Box(Modifier.fillMaxSize().background(C.bg)) {
-        // the screens run under the floating dock; those with their own lists leave room for it
-        Box(Modifier.fillMaxSize().padding(bottom = if (!locked && (tab == 2 || tab == 3)) Dock.H else 0.dp)) {
+        // the screens run under the floating dock; those with their own lists leave room for it (and for the system's buttons under it)
+        Box(Modifier.fillMaxSize().then(if (!locked && (tab == 2 || tab == 3)) Modifier.navigationBarsPadding().padding(bottom = Dock.H) else Modifier)) {
             when {
                 s.trip != null && tab == 0 -> OnTheWay(s, locked) { over = it }
                 tab == 0 -> Tower(s) { over = it }

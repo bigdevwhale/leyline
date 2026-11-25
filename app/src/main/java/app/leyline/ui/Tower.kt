@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -130,7 +131,7 @@ fun Tower(s: State, open: (Over) -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             Box(Modifier.fillMaxWidth().framed(20.dp).padding(horizontal = 12.dp, vertical = 10.dp)) { NextUp(s, open) }
-            Spacer(Modifier.height(Dock.H + 8.dp))
+            Spacer(Modifier.navigationBarsPadding().height(Dock.H + 8.dp))
         }
     }
 }
@@ -292,7 +293,7 @@ fun OnTheWay(s: State, locked: Boolean, open: (Over) -> Unit = {}) {
                         "You can pocket the phone: the ride goes on with the screen off. Stand still for 8 minutes and it ends by itself."),
                         style = T.tiny.copy(color = Color(0xFFB8A3B4)), textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
                 }
-                Spacer(Modifier.height(Dock.H))
+                Spacer(Modifier.navigationBarsPadding().height(Dock.H))
             } else {
                 Text(tr("Смотрите на дорогу. Всё самое интересное – после остановки.", "Eyes on the road. Everything interesting waits for the stop."),
                     style = T.body.copy(color = Color(0xFFD9C7D4)), textAlign = TextAlign.Center)

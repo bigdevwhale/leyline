@@ -7,6 +7,7 @@ Leyline has no account, no ads and no analytics. Your rides, quarters, ingredien
 **What goes online, and only that:**
 - map tiles from OpenStreetMap, for the part of the map on screen;
 - the named districts around you and what is in a quarter (parks, water, shops, stations…) from the OpenStreetMap Overpass service, for the point of a quarter's centre;
+- the metro stations within 40 km of your home, from the same Overpass service, about once a month;
 - once after a ride, what lies along its route (rivers, parks, markets…) from the same Overpass service: up to 90 points of the route, with nothing else;
 - the weather at the end of a ride from Open-Meteo, for your position rounded to about 100 m.
 

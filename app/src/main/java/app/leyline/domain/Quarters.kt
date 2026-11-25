@@ -2,10 +2,12 @@ package app.leyline.domain
 
 import app.leyline.data.Quarter
 import app.leyline.trip.Geo
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -23,14 +25,20 @@ object Quarters {
     /** Radii the quarters are loaded in, smallest first. */
     val RINGS = listOf(3000, 6000, 9000)
 
-    /** Asks every mirror at once and takes the first good answer: public Overpass servers are often busy. */
-    suspend fun ask(q: String, timeout: Int = 40_000): JSONObject? = withContext(Dispatchers.IO) {
+    /**
+     * Asks every mirror at once and takes the first good answer: public Overpass servers are often busy. Gives up
+     * after [timeout] (and the time to connect) in all: a busy server trickles its answer out, and a blocking read
+     * neither notices a cancelled coroutine nor its own read timeout then – so the connections are cut by hand.
+     */
+    suspend fun ask(q: String, timeout: Int = 40_000): JSONObject? = coroutineScope {
         val body = "data=" + URLEncoder.encode(q, "UTF-8")
-        val done = kotlinx.coroutines.CompletableDeferred<JSONObject?>()
+        val done = CompletableDeferred<JSONObject?>()
+        val open = java.util.concurrent.CopyOnWriteArrayList<HttpURLConnection>()
         val jobs = ENDPOINTS.map { url ->
-            launch {
+            launch(Dispatchers.IO) {
                 val r = runCatching {
                     val c = URL(url).openConnection() as HttpURLConnection
+                    open += c
                     c.connectTimeout = 10_000; c.readTimeout = timeout; c.requestMethod = "POST"; c.doOutput = true
                     c.setRequestProperty("User-Agent", "Leyline (app.leyline; github.com/bigdevwhale/leyline)")
                     c.outputStream.use { it.write(body.toByteArray()) }
@@ -40,10 +48,13 @@ object Quarters {
                 if (r != null) done.complete(r)
             }
         }
-        launch { jobs.joinAll(); done.complete(null) }
-        val r = done.await()
-        jobs.forEach { it.cancel() }
-        r
+        val all = launch { jobs.joinAll(); done.complete(null) }
+        try {
+            withTimeoutOrNull(timeout + 10_000L) { done.await() }
+        } finally {
+            all.cancel(); jobs.forEach { it.cancel() }
+            open.forEach { runCatching { it.disconnect() } }
+        }
     }
 
     /** Named places within [radius] m, or null without the network. */

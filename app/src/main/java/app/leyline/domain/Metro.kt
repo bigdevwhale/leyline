@@ -20,13 +20,24 @@ object Metro {
     /** Stations are loaded this far around home. */
     const val RADIUS = 40_000
 
-    /** The city's stations around ([lat], [lon]), or null without the network. */
+    /** The city's stations around ([lat], [lon]), or null when the map's servers couldn't be asked. */
     suspend fun around(lat: Double, lon: Double, radius: Int = RADIUS): List<Station>? {
         val at = String.format(Locale.US, "%.5f,%.5f", lat, lon)
-        val js = Quarters.ask("[out:json][timeout:40];(" +
+        // points first: a light question, and most stations are mapped as one. A busy public server keeps even a
+        // light one waiting half a minute and more, so it is given time
+        val nodes = Quarters.ask("[out:json][timeout:80];(" +
+            "node(around:$radius,$at)[railway=station][station~\"^(subway|light_rail|monorail)$\"][name];" +
+            "node(around:$radius,$at)[public_transport=station][subway=yes][name];" +
+            ");out;", 90_000) ?: return null
+        parse(nodes)?.takeIf { it.isNotEmpty() }?.let { return it }
+        // some cities draw their stations only as buildings or areas: the slow question
+        return Quarters.ask("[out:json][timeout:110];(" +
             "nwr(around:$radius,$at)[railway=station][station~\"^(subway|light_rail|monorail)$\"][name];" +
             "nwr(around:$radius,$at)[public_transport=station][subway=yes][name];" +
-            ");out center tags;") ?: return null
+            ");out center tags;", 120_000)?.let(::parse)
+    }
+
+    private fun parse(js: org.json.JSONObject): List<Station>? {
         val els = js.optJSONArray("elements") ?: return null
         return dedupe((0 until els.length()).mapNotNull { i ->
             val e = els.getJSONObject(i)

@@ -38,8 +38,8 @@ object Book {
         Ingredient("resin", "Живица", "Resin", "Парк, сквер или лес вдоль дороги", "A park, a square or woods along the road", osm = true),
         Ingredient("moon", "Лунная пыль", "Moon dust", "Поездка после заката. В полнолуние вдвое больше", "A ride after sunset. Twice as much at full moon"),
         Ingredient("dawn", "Роса зари", "Dawn dew", "Поездка на рассвете или на закате", "A ride at sunrise or sunset"),
-        Ingredient("storm", "Грозовая вода", "Storm water", "Поездка в дождь", "A ride in the rain"),
-        Ingredient("frost", "Иней", "Hoarfrost", "Поездка в снег или в мороз", "A ride in snow or frost"),
+        Ingredient("storm", "Грозовая вода", "Storm water", "Поездка в дождь. Или в сильный ветер, от 30 км/ч", "A ride in the rain. Or in a strong wind, 30 km/h and up"),
+        Ingredient("frost", "Иней", "Hoarfrost", "Поездка в снег или в мороз. Или холодной ночью, от +10° и ниже", "A ride in snow or frost. Or on a cold night, +10° and below"),
         Ingredient("sun", "Солнечный янтарь", "Sun amber", "Днём в ясную погоду", "In the daytime under a clear sky"),
         Ingredient("ore", "Глубинная руда", "Deep ore", "Метро и тоннели. Или квартал кузниц после заката", "The underground and tunnels. Or a forge quarter after dark"),
         Ingredient("wax", "Свечной воск", "Candle wax", "Храм, часовня или собор по пути", "A church, a chapel or a cathedral on the way", osm = true),
@@ -52,6 +52,16 @@ object Book {
         Ingredient("shard", "Звёздный осколок", "Star shard", "Новые места: улицы, где вы ещё не ездили", "New places: streets you've never ridden"),
     )
     val ing = ingredients.associateBy { it.id }
+
+    /** What only the sky gives: somewhere it never snows, so the cauldron can distil them from the rest. */
+    val WEATHER = listOf("storm", "frost", "sun")
+    /** This many of one ingredient distil into one of the sky's. */
+    const val DISTIL = 4
+
+    /** What [target] is distilled from: the ingredient there is most of, if there's enough of it. */
+    fun distilFrom(bag: Map<String, Int>, target: String): String? =
+        if (target !in WEATHER) null
+        else bag.filterKeys { it != target && it in ing }.filterValues { it >= DISTIL }.maxByOrNull { it.value }?.key
     fun ing(id: String) = ing.getValue(id)
 
     val recipes = listOf(
