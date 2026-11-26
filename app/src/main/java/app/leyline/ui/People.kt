@@ -103,6 +103,16 @@ fun SpiritSheet(s: State, id: String, onDismiss: () -> Unit) {
         if (step >= 4) {
             Text(tr("Вы друзья", "You are friends"), style = T.h3)
             Line(Book.ing(sp.ing).pic, Spirits.friendLine(sp, Spirits.friendGift(s)))
+            Spacer(Modifier.height(6.dp))
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.paper2).padding(10.dp)) {
+                Text(tr("Подарок другу", "A gift for a friend"), style = T.smallB)
+                Text(tr("Друзья рады подаркам и не забывают отблагодарить. Сварите ещё «${Book.recipe(sp.gift).ru}» и отдайте.",
+                    "Friends are glad of gifts and never forget to thank you. Brew another «${Book.recipe(sp.gift).en}» and give it."), style = T.small.copy(color = C.ink))
+                Text(Spirits.offerLine(sp), style = T.small, modifier = Modifier.padding(top = 4.dp))
+                Text(tr("В запасе: ${s.stock[sp.gift] ?: 0}", "In stock: ${s.stock[sp.gift] ?: 0}"), style = T.smallB.copy(color = C.teal), modifier = Modifier.padding(top = 4.dp))
+            }
+            Spacer(Modifier.height(10.dp))
+            Btn(tr("Отдать", "Give"), Modifier.fillMaxWidth(), enabled = g.canOffer(s, id)) { g.offer(id) }
             return@Sheet
         }
         val st = sp.steps[step]

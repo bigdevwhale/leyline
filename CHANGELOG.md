@@ -6,6 +6,15 @@ line "<!-- tg", then 2-4 short lines in Russian for users (what is new, what is 
 then close it like any HTML comment. The release notes carry it, and the chat bot posts those lines.
 -->
 
+## [1.4.0] - 2026-11-26
+
+### Added
+- **Gifts for friends.** A spirit that is already your friend takes its gift again: brew it once more and tap «Give» on its page for +40 power and four of its ingredient. A gift brewed twice no longer lies in stock for nothing.
+
+<!-- tg
+Духи-друзья снова принимают дары: сварите подарок ещё раз и получите силу и горсть ингредиента духа
+-->
+
 ## [1.3.0] - 2026-11-26
 
 ### Added

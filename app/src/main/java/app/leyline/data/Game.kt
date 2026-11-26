@@ -881,6 +881,22 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         // each of the first three requests ends with a clue to a recipe; the fourth makes a friend
         if (step < 3) Clues.give(done) { news.tryEmit(News(it)) } else done
     }
+
+    /** True when a friend can take its gift once more. */
+    fun canOffer(s: State, id: String): Boolean {
+        val sp = Spirits.byId[id] ?: return false
+        return (s.spirits[id] ?: 0) >= 4 && (s.stock[sp.gift] ?: 0) > 0
+    }
+
+    /** A friend takes its gift again and gives back a little power and its ingredient. */
+    fun offer(id: String) = write { s ->
+        if (!canOffer(s, id)) return@write s
+        val sp = Spirits.byId.getValue(id)
+        val (p, n) = Spirits.OFFER
+        news.tryEmit(News(tr("${sp.ru} принимает подарок: +$p силы и ${Book.ing(sp.ing).ru.lowercase()} ×$n", "${sp.en} is glad of the gift: +$p power and ${Book.ing(sp.ing).en.lowercase()} ×$n")))
+        s.copy(stock = (s.stock + (sp.gift to (s.stock[sp.gift] ?: 0) - 1)).filterValues { it > 0 }, power = s.power + p,
+            bag = s.bag + (sp.ing to s.has(sp.ing) + n), seen = s.seen + sp.ing)
+    }
 }
 
 /**

@@ -105,6 +105,15 @@ object Spirits {
     /** What a friendly spirit gives on a ride through its quarters: one, two with the full page of gifts. */
     fun friendGift(s: app.leyline.data.State) = if (Pages.complete(s, Cat.GIFT)) 2 else 1
 
+    /**
+     * What a friend gives for its gift brewed once more: a little power and a handful of its ingredient. The gift
+     * takes about three of that ingredient and one other, so it is a small trade, never a way to breed ingredients.
+     */
+    val OFFER = 40 to 4
+
+    fun offerLine(sp: Spirit) = tr("Подношение: +${OFFER.first} силы и ${Book.ing(sp.ing).ru.lowercase()} ×${OFFER.second}",
+        "Offering: +${OFFER.first} power and ${Book.ing(sp.ing).en.lowercase()} ×${OFFER.second}")
+
     fun friendLine(sp: Spirit, n: Int = 1) = tr("Друг: +$n ${Book.ing(sp.ing).ru.lowercase()} в каждой поездке через его кварталы",
         "Friend: +$n ${Book.ing(sp.ing).en.lowercase()} on every ride through its quarters")
 }
