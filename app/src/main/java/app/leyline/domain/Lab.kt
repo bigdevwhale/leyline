@@ -11,18 +11,33 @@ object Lab {
     /** The recipe made of exactly these ingredients, if any (the great elixir can't be found this way). */
     fun match(ids: Collection<String>): Recipe? = ids.toSet().let { set -> Book.recipes.firstOrNull { it.id != "great" && it.needs.keys == set } }
 
-    /** How close a failed set was to some page not written yet. */
-    fun hint(ids: Collection<String>, known: Set<String>): String {
+    /**
+     * How close a failed set is to some page not written yet: 4 – one ingredient missing, 3 – one too many,
+     * 2 – two belong together, 1 – cold, 0 – not even close. Counted against what is known now, so an old dud's
+     * hint stays true as the grimoire fills.
+     */
+    fun warmth(ids: Collection<String>, known: Set<String>): Int {
         val set = ids.toSet()
         val rest = Book.recipes.filter { it.id != "great" && it.id !in known }
         return when {
-            rest.any { it.needs.keys.containsAll(set) } -> tr("Тепло! Всё на своём месте, но чего-то не хватает – нужен ещё один ингредиент.", "Warm! Everything belongs, but something is missing – one more ingredient is needed.")
-            rest.any { set.containsAll(it.needs.keys) } -> tr("Тепло! Один ингредиент тут лишний.", "Warm! One ingredient here is too many.")
-            rest.any { (it.needs.keys intersect set).size >= 2 } -> tr("Два ингредиента явно дружат, третий им мешает.", "Two of them clearly get along, the third is in the way.")
-            rest.any { (it.needs.keys intersect set).isNotEmpty() } -> tr("Холодно. Вместе они ни во что не складываются.", "Cold. Together they add up to nothing.")
-            else -> tr("Совсем мимо.", "Not even close.")
+            rest.any { it.needs.keys.containsAll(set) } -> 4
+            rest.any { set.containsAll(it.needs.keys) } -> 3
+            rest.any { (it.needs.keys intersect set).size >= 2 } -> 2
+            rest.any { (it.needs.keys intersect set).isNotEmpty() } -> 1
+            else -> 0
         }
     }
+
+    fun hint(ids: Collection<String>, known: Set<String>): String = when (warmth(ids, known)) {
+        4 -> tr("Тепло! Всё на своём месте, но чего-то не хватает – нужен ещё один ингредиент.", "Warm! Everything belongs, but something is missing – one more ingredient is needed.")
+        3 -> tr("Тепло! Один ингредиент тут лишний.", "Warm! One ingredient here is too many.")
+        2 -> tr("Два ингредиента явно дружат, третий им мешает.", "Two of them clearly get along, the third is in the way.")
+        1 -> tr("Холодно. Вместе они ни во что не складываются.", "Cold. Together they add up to nothing.")
+        else -> tr("Совсем мимо.", "Not even close.")
+    }
+
+    /** The ingredients of a tried set ("a+b+c"). */
+    fun parts(key: String) = key.split('+').filter { it.isNotEmpty() }
 
     private val DUDS = listOf(
         "Мутная жижа|Murky sludge", "Кисель с искрами|Sparkly jelly", "Пар с запахом носков|Sock-scented steam", "Очень серьёзный пузырь|A very serious bubble",
@@ -31,6 +46,46 @@ object Lab {
     )
     fun dud(key: String) = bi(DUDS[Rand(hash(key)).int(DUDS.size)])
     const val DUD_POWER = 5
+}
+
+/**
+ * Clues to recipes not found yet: one ingredient of one page («one of the elixirs takes wind»). A spirit gives one
+ * for each of its first three requests, a beast when it awakens, a resident at the end of their story. A page
+ * never gets every ingredient this way – the last one is still found in the cauldron. Gifts are left out: the
+ * spirits tell those themselves. Kept in [app.leyline.data.State.clues] as "recipe:ingredient".
+ */
+object Clues {
+    fun of(clues: Set<String>, r: Recipe): List<String> = r.needs.keys.filter { "${r.id}:$it" in clues }
+
+    /** Pages that can still get a clue. */
+    fun open(s: app.leyline.data.State) = Book.recipes.filter {
+        it.id != "great" && it.cat != Cat.GIFT && it.id !in s.known && of(s.clues, it).size < it.needs.size - 1
+    }
+
+    /** The next clue, the same for the same moment of the game; null when there is nothing left to tell. */
+    fun next(s: app.leyline.data.State): String? {
+        val pool = open(s)
+        if (pool.isEmpty()) return null
+        val r = Rand(hash("clue:${s.clues.size}:${s.known.size}"))
+        val page = pool[r.int(pool.size)]
+        val left = page.needs.keys.filter { "${page.id}:$it" !in s.clues }.sorted()
+        return "${page.id}:${left[r.int(left.size)]}"
+    }
+
+    /** Gives the next clue, if any, and says it. */
+    fun give(s: app.leyline.data.State, say: (String) -> Unit): app.leyline.data.State {
+        val c = next(s) ?: return s
+        say(tr("Подсказка: ", "A clue: ") + line(c))
+        return s.copy(clues = s.clues + c)
+    }
+
+    /** «в один из эликсиров идёт ветер». */
+    fun line(c: String): String {
+        val r = Book.recipe[c.substringBefore(':')] ?: return ""
+        val ing = Book.ing[c.substringAfter(':')] ?: return ""
+        val ru = when (r.cat) { Cat.ELIXIR -> "в один из эликсиров"; Cat.AWAKEN -> "в одно из пробуждений"; Cat.WARD -> "в один из оберегов"; Cat.WONDER -> "в одно из чудес"; Cat.GIFT -> "в один из даров" }
+        return tr("$ru идёт ${ing.ru.lowercase()}", "one of the ${r.cat.pluralEn.lowercase()} takes ${ing.en.lowercase()}")
+    }
 }
 
 /** Cozy things for the tower: where the pile of ingredients goes. [x],[y] place the bottom middle in the room picture (0..1), [w] is the width. */

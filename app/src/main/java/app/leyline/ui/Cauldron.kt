@@ -145,7 +145,7 @@ fun CozySheet(s: State, onDismiss: () -> Unit) {
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CauldronTab(s: State, open: (Over) -> Unit) {
+fun CauldronTab(s: State, open: (Over) -> Unit, onTrials: () -> Unit = {}) {
     val g = LocalGame
     val scope = rememberCoroutineScope()
     val pot = remember { mutableStateListOf<String>() }
@@ -228,7 +228,11 @@ fun CauldronTab(s: State, open: (Over) -> Unit) {
                 }
             }
         }
-        Text(tr("Тап – бросить в котёл, долгое нажатие – где искать. Опытов сделано: ${s.tried.size + s.known.size}.", "Tap to drop it in, hold to see where to look. Experiments so far: ${s.tried.size + s.known.size}."),
-            style = T.tiny, modifier = Modifier.padding(vertical = 6.dp))
+        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(tr("Тап – бросить в котёл, долгое нажатие – где искать. Опытов сделано: ${s.tried.size + s.known.size}.", "Tap to drop it in, hold to see where to look. Experiments so far: ${s.tried.size + s.known.size}."),
+                style = T.tiny, modifier = Modifier.weight(1f))
+            // every dud and its hint are kept on the «Trials» page
+            if (s.tried.isNotEmpty()) Text(tr("Опыты ›", "Trials ›"), style = T.smallB.copy(color = C.acc), modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onTrials).padding(6.dp))
+        }
     }
 }

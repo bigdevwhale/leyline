@@ -65,6 +65,13 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
+/** Where a ride went: «Квартал А → Квартал Б», one name when it stayed in one quarter, null when none is known. */
+fun fromTo(s: State, t: Trip): String? {
+    val a = t.quarters.firstOrNull()?.let { s.quarters[it]?.name }
+    val b = t.quarters.lastOrNull()?.let { s.quarters[it]?.name }
+    return when { a == null -> b; b == null || a == b -> a; else -> "$a → $b" }
+}
+
 fun hhmm(ms: Long): String = Instant.ofEpochMilli(ms).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm", loc))
 
 @Composable
@@ -120,7 +127,8 @@ fun TripSheet(s: State, start: Long, open: (Over) -> Unit, onDismiss: () -> Unit
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(tr("Что сплела дорога", "What the road wove"), style = T.title)
-                Text("${relDay(dayOf(t.start)).replaceFirstChar { it.uppercase() }}, ${hhmm(t.start)} · ${ride.title}", style = T.small)
+                Text("${relDay(dayOf(t.start)).replaceFirstChar { it.uppercase() }}, ${hhmm(t.start)}–${hhmm(t.end)} · ${ride.title}", style = T.small)
+                fromTo(s, t)?.let { Text(it, style = T.smallB) }
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -219,6 +227,7 @@ fun JournalSheet(s: State, onOpen: (Long) -> Unit, onDismiss: () -> Unit) {
         Text(tr("Сила копится от каждого километра. Ею платят за пробуждение зверей, обереги и чудеса.",
             "Power builds up with every kilometre. It pays for awakening beasts, wards and wonders."), style = T.tiny, modifier = Modifier.padding(top = 6.dp))
         Ornament()
+        Text(tr("Тапните поездку – её путь, ингредиенты, сила и что случилось в дороге.", "Tap a ride – its way, ingredients, power and what happened on the road."), style = T.tiny, modifier = Modifier.padding(bottom = 4.dp))
         if (s.trips.isEmpty()) Text(tr("Здесь появится первая поездка. Нажмите «В путь» перед тем, как поедете.", "Your first ride will appear here. Tap «Set off» before you ride."), style = T.body)
         s.trips.take(60).forEach { t ->
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onOpen(t.start) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -226,7 +235,8 @@ fun JournalSheet(s: State, onOpen: (Long) -> Unit, onDismiss: () -> Unit) {
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text("${relDay(dayOf(t.start)).replaceFirstChar { it.uppercase() }}, ${hhmm(t.start)} · ${fmt1(t.km)} ${tr("км", "km")}", style = T.bodyB)
-                    Text(Ride.of(t.ride).title + (s.quarters[t.quarters.lastOrNull().orEmpty()]?.let { " · ${it.name}" } ?: ""), style = T.small, maxLines = 1)
+                    Text(fromTo(s, t) ?: Ride.of(t.ride).title, style = T.small, maxLines = 2)
+                    if (t.power > 0) Text(tr("+${fmt(t.power)} силы", "+${fmt(t.power)} power") + (if (t.gains.isNotEmpty()) tr(" · ингредиентов: ${t.gains.values.sum()}", " · ingredients: ${t.gains.values.sum()}") else ""), style = T.tiny)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) { t.gains.entries.sortedByDescending { it.value }.take(4).forEach { Pic(Book.ing(it.key).pic, Modifier.size(26.dp)) } }
             }

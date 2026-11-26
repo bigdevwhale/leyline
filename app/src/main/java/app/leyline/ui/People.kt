@@ -122,7 +122,7 @@ fun SpiritSheet(s: State, id: String, onDismiss: () -> Unit) {
         }
         val (p, n) = Spirits.reward(step)
         Text(if (step == 3) tr("Награда: дружба навсегда, $p силы и ${Book.ing(sp.ing).ru.lowercase()} ×$n", "Reward: friendship for good, $p power and ${Book.ing(sp.ing).en.lowercase()} ×$n")
-        else tr("Награда: $p силы и ${Book.ing(sp.ing).ru.lowercase()} ×$n", "Reward: $p power and ${Book.ing(sp.ing).en.lowercase()} ×$n"), style = T.small, modifier = Modifier.padding(top = 8.dp))
+        else tr("Награда: $p силы, ${Book.ing(sp.ing).ru.lowercase()} ×$n и подсказка к рецепту", "Reward: $p power, ${Book.ing(sp.ing).en.lowercase()} ×$n and a clue to a recipe"), style = T.small, modifier = Modifier.padding(top = 8.dp))
         Spacer(Modifier.height(10.dp))
         val ready = g.spiritReady(s, id)
         Btn(when (st.ask) { Ask.GIVE, Ask.GIFT -> tr("Отдать", "Give"); else -> tr("Забрать награду", "Take the reward") }, Modifier.fillMaxWidth(), enabled = ready) { g.spiritDone(id) }
@@ -291,7 +291,8 @@ fun FolkSheet(s: State, quarter: String, onDismiss: () -> Unit) {
         }
         val i = e.step
         val reward = tr("Награда: ${Folk.power[i]} силы", "Reward: ${Folk.power[i]} power") +
-            (Folk.gift(s, e)?.let { tr(" и ${Book.ing(it).ru.lowercase()} ×${Folk.gifts[i]}", " and ${Book.ing(it).en.lowercase()} ×${Folk.gifts[i]}") } ?: "")
+            (Folk.gift(s, e)?.let { tr(" и ${Book.ing(it).ru.lowercase()} ×${Folk.gifts[i]}", " and ${Book.ing(it).en.lowercase()} ×${Folk.gifts[i]}") } ?: "") +
+            (if (i == who.steps.size - 1) tr(", а в конце истории – подсказка к рецепту", ", and at the story's end a clue to a recipe") else "")
         Text("«${Folk.text(s, e)}»", style = T.h3)
         Spacer(Modifier.height(6.dp))
         if (e.since == 0L) {

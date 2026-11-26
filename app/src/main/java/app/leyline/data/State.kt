@@ -138,6 +138,8 @@ data class State(
     val stationsAt: Long = 0,
     /** The residents and their errands. */
     val folk: List<Errand> = emptyList(),
+    /** Clues to recipes not found yet, "recipe:ingredient" (see [app.leyline.domain.Clues]). */
+    val clues: Set<String> = emptySet(),
 ) {
     fun has(ing: String) = bag[ing] ?: 0
     fun friends() = spirits.filterValues { it >= 4 }.keys
@@ -212,7 +214,7 @@ fun State.json(): JSONObject = JSONObject()
     .put("btAddr", btAddr).put("btName", btName).put("reach", reach).put("placesV", 2).put("aurora", aurora).put("mirror", mirror).put("great", great).put("lastCell", lastCell)
     .put("tried", JSONArray(tried.toList())).put("decor", JSONArray(decor.toList())).put("bloomDay", bloomDay)
     .put("stations", JSONArray(stations.map { it.json() })).put("stationsAt", stationsAt)
-    .put("folk", JSONArray(folk.map { it.json() }))
+    .put("folk", JSONArray(folk.map { it.json() })).put("clues", JSONArray(clues.toList()))
 
 fun stateOf(o: JSONObject) = State(
     onboarded = o.optBoolean("onboarded"), homeLat = o.optDouble("homeLat", 0.0), homeLon = o.optDouble("homeLon", 0.0),
@@ -230,5 +232,5 @@ fun stateOf(o: JSONObject) = State(
     aurora = o.optBoolean("aurora"), mirror = o.optBoolean("mirror"), great = o.optBoolean("great"), lastCell = o.str("lastCell"),
     tried = o.optJSONArray("tried").strings().toSet(), decor = o.optJSONArray("decor").strings().toSet(), bloomDay = o.optLong("bloomDay"),
     stations = o.optJSONArray("stations").list(::stationOf), stationsAt = o.optLong("stationsAt"),
-    folk = o.optJSONArray("folk").list(::errandOf),
+    folk = o.optJSONArray("folk").list(::errandOf), clues = o.optJSONArray("clues").strings().toSet(),
 )

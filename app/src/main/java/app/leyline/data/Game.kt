@@ -4,6 +4,7 @@ import android.content.Context
 import app.leyline.domain.Ask
 import app.leyline.domain.Book
 import app.leyline.domain.Cat
+import app.leyline.domain.Clues
 import app.leyline.domain.Decor
 import app.leyline.domain.Decors
 import app.leyline.domain.Folk
@@ -754,7 +755,8 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         val have = s.stock[p] ?: 0
         if (have <= 0) return@write s
         news.tryEmit(News(tr("${m.kind.ru} пробудился: теперь он ${Mounts.stageName(m.stage + 1)}", "Your ${m.kind.en.lowercase()} has awakened: now ${Mounts.stageName(m.stage + 1)}")))
-        s.copy(stock = (s.stock + (p to have - 1)).filterValues { it > 0 }, mounts = s.mounts + (beast to m.copy(stage = m.stage + 1)))
+        // an awakened beast remembers a little of the old lore: a clue to a recipe
+        Clues.give(s.copy(stock = (s.stock + (p to have - 1)).filterValues { it > 0 }, mounts = s.mounts + (beast to m.copy(stage = m.stage + 1)))) { news.tryEmit(News(it)) }
     }
 
     /** Sets a ward on an awakened sanctum; the same ward again raises it (up to 3). */
@@ -831,8 +833,10 @@ class Game(private val app: Context, val scope: CoroutineScope) {
             val who = Folk.of(e)
             news.tryEmit(News(if (Folk.done(next)) tr("${who.ru}: «${who.thanksRu}»", "${who.en}: «${who.thanksEn}»")
                 else tr("${who.ru} благодарит: +${Folk.power[i]} силы", "${who.en} thanks you: +${Folk.power[i]} power")))
-            s.copy(bag = bag, stock = stock, power = s.power + Folk.power[i], seen = s.seen + listOfNotNull(gift),
+            val s2 = s.copy(bag = bag, stock = stock, power = s.power + Folk.power[i], seen = s.seen + listOfNotNull(gift),
                 folk = s.folk.map { if (it.quarter == quarter) next else it })
+            // a finished story ends with a clue to a recipe
+            if (Folk.done(next)) Clues.give(s2) { news.tryEmit(News(it)) } else s2
         }
         return ok
     }
@@ -872,8 +876,10 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         // before the last request the spirit tells how its gift is made
         var known = if (step + 1 == 3) s.known + sp.gift else s.known
         if (Book.recipes.all { it.id == "great" || it.id in known }) known = known + "great"
-        s.copy(power = s.power + p, bag = bag, seen = seen, known = known, spirits = s.spirits + (id to step + 1), spiritCount = s.spiritCount + (id to 0),
+        val done = s.copy(power = s.power + p, bag = bag, seen = seen, known = known, spirits = s.spirits + (id to step + 1), spiritCount = s.spiritCount + (id to 0),
             spiritSince = s.spiritSince + (id to System.currentTimeMillis()))
+        // each of the first three requests ends with a clue to a recipe; the fourth makes a friend
+        if (step < 3) Clues.give(done) { news.tryEmit(News(it)) } else done
     }
 }
 

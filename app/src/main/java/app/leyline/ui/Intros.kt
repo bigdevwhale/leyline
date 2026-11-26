@@ -59,6 +59,7 @@ fun introFor(tab: Int, over: Over?, trip: Boolean): Intro? = when (over) {
             "ing_mist" to tr("Дорога сама собирает ингредиенты: мост даёт туман, парк – живицу, ночь – лунную пыль.", "The road gathers ingredients by itself: a bridge gives mist, a park resin, the night moon dust."),
             "cauldron_brew" to tr("Тапните котёл – там ставят опыты и находят рецепты. Забурлил – значит, есть что сварить.", "Tap the cauldron – that's where you experiment and find recipes. If it bubbles, something can be brewed."),
             "decor_lamp" to tr("Фонарик слева – уют: лишние ингредиенты превращаются в вещи для комнаты.", "The lantern on the left is comfort: spare ingredients turn into things for the room."),
+            "ic_hourglass" to tr("Песочные часы – дневник дорог: все поездки, откуда и куда, и что они принесли.", "The hourglass is the road journal: every ride, from where to where, and what it brought."),
             "ic_omen" to tr("Знак дня: один ингредиент сегодня приходит вдвое чаще.", "The omen: one ingredient comes twice as often today.")))
         1 -> Intro("i.map", "tab_map", tr("Карта силы", "The map of power"), listOf(
             "tab_map" to tr("Каждая поездка зажигает жилу вдоль пути. Чем чаще ездите – тем она ярче.", "Every ride lights a line along the way. The more you ride it, the brighter it gets."),
@@ -68,7 +69,7 @@ fun introFor(tab: Int, over: Over?, trip: Boolean): Intro? = when (over) {
         2 -> Intro("i.lab", "tab_book", tr("Гримуар и котёл", "The grimoire and the cauldron"), listOf(
             "cauldron_brew" to tr("Рецепты никто не подскажет: бросьте в котёл два-три разных ингредиента и нажмите «Варить».", "Nobody hands you recipes: drop two or three different ingredients into the cauldron and tap «Brew»."),
             "pot_unknown" to tr("Угадали состав – рецепт записан. Не угадали – выйдет брак и подсказка: тепло или холодно.", "Guess a set right and the recipe is written down. Wrong – you get a dud and a hint: warm or cold."),
-            "pot_tailwind" to tr("«Рецепты» – варить найденное. «Запас» – сваренное: эликсиры пьют перед поездкой, обереги ставят на карте.", "«Recipes» – brew what you've found. «Stock» – what's brewed: elixirs before a ride, wards on the map.")))
+            "pot_tailwind" to tr("«Рецепты» – варить найденное. «Опыты» – весь брак с подсказками и подсказки от духов. «Запас» – сваренное.", "«Recipes» – brew what you've found. «Trials» – every dud with its hint, and clues from the spirits. «Stock» – what's brewed.")))
         else -> Intro("i.stable", "tab_stable", tr("Звери", "The beasts"), listOf(
             "mount_car_young" to tr("У каждого способа езды – свой зверь. Он растёт от километров.", "Each way of riding has its beast. It grows with kilometres."),
             "pot_awaken1" to tr("Наездил нужное – сварите зелье пробуждения, и зверь перейдёт на новую ступень.", "Ridden enough – brew an awakening potion and the beast reaches a new stage."),

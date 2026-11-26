@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import app.leyline.data.State
 import app.leyline.domain.Book
 import app.leyline.domain.Cat
+import app.leyline.domain.Clues
+import app.leyline.domain.Lab
 import app.leyline.domain.Pages
 import app.leyline.domain.Recipe
 import app.leyline.domain.Spirits
@@ -75,12 +77,13 @@ fun Grimoire(s: State, open: (Over) -> Unit) {
             Pill("pot_power", fmt(s.power))
         }
         Box(Modifier.padding(horizontal = 12.dp)) {
-            Tabs2(listOf(tr("Котёл", "Cauldron"), tr("Рецепты", "Recipes"), tr("Запас", "Stock") + (s.stock.values.sum().takeIf { it > 0 }?.let { " · $it" } ?: "")), tab) { tab = it }
+            Tabs2(listOf(tr("Котёл", "Cauldron"), tr("Рецепты", "Recipes"), tr("Опыты", "Trials"), tr("Запас", "Stock") + (s.stock.values.sum().takeIf { it > 0 }?.let { " · $it" } ?: "")), tab) { tab = it }
         }
         Spacer(Modifier.height(8.dp))
         when (tab) {
-            0 -> CauldronTab(s, open)
+            0 -> CauldronTab(s, open) { tab = 2 }
             1 -> Recipes(s, open)
+            2 -> Trials(s, open)
             else -> Stock(s, open)
         }
     }
@@ -143,7 +146,59 @@ private fun Recipes(s: State, open: (Over) -> Unit) {
                     else (s.stock[r.id] ?: 0).takeIf { it > 0 }?.let { Text("×$it", style = T.smallB) }
                 }
             }
-            if (hidden > 0) Hidden(hidden)
+            // pages not found yet that a spirit, a beast or a resident gave a clue to
+            val clued = Book.recipes.filter { it.cat == cat && it.id !in s.known && Clues.of(s.clues, it).isNotEmpty() }
+            clued.forEach { r -> Clued(s, r) }
+            if (hidden > clued.size) Hidden(hidden - clued.size)
+        }
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+/** A page not found yet with the ingredients its clues told: «? + wind + ?». */
+@Composable
+private fun Clued(s: State, r: Recipe) {
+    val got = Clues.of(s.clues, r)
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(12.dp)).background(C.paper.copy(alpha = 0.7f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Pic("pot_unknown", Modifier.size(40.dp), alpha = 0.8f)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(tr("Неизвестный рецепт · ${r.cat.ru.lowercase()}", "Unknown recipe · ${r.cat.en.lowercase()}"), style = T.bodyB)
+            Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                got.forEach { Pic(Book.ing(it).pic, Modifier.size(26.dp)) }
+                repeat(r.needs.size - got.size) { Pic("pot_unknown", Modifier.size(22.dp), alpha = 0.5f) }
+                Text(tr(" ${r.needs.size} ингр.", " ${r.needs.size} ingr."), style = T.tiny)
+            }
+        }
+    }
+}
+
+/** Every experiment that came out a dud, warmest first, with its hint as it stands now. */
+@Composable
+private fun Trials(s: State, open: (Over) -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
+        val clues = s.clues.filter { c -> c.substringBefore(':') !in s.known }
+        if (clues.isNotEmpty()) {
+            Text(tr("Подсказки", "Clues"), style = T.h3)
+            Text(tr("Их дают духи, звери при пробуждении и жители. Последний ингредиент всегда ищут в котле.", "Spirits, awakened beasts and residents give them. The last ingredient is always found in the cauldron."), style = T.tiny)
+            clues.sorted().forEach { c -> Line(Book.ing(c.substringAfter(':')).pic, Clues.line(c).replaceFirstChar { it.uppercase() }) }
+            Ornament()
+        }
+        Text(tr("Неудачные опыты", "Failed experiments"), style = T.h3)
+        if (s.tried.isEmpty()) Text(tr("Пока ни одного. Здесь будет каждый брак с подсказкой котла, чтобы не пробовать дважды.", "None yet. Every dud will be here with the cauldron's hint, so you never try a set twice."), style = T.body)
+        else Text(tr("Подсказка пересчитывается по тому, что ещё не найдено, – сверху самые тёплые.", "Hints are counted against what's still unfound – the warmest are on top."), style = T.tiny)
+        s.tried.map { it to Lab.warmth(Lab.parts(it), s.known) }.sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first }).forEach { (key, w) ->
+            val ids = Lab.parts(key)
+            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(12.dp)).background(if (w >= 3) C.teal.copy(alpha = 0.16f) else C.paper).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+                    ids.forEach { id -> Pic(Book.ing(id).pic, Modifier.size(34.dp).clickable { open(Over.Ingredient(id)) }) }
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(Lab.dud(key), style = T.smallB)
+                    Text(Lab.hint(ids, s.known), style = T.tiny.copy(color = if (w >= 2) C.ink else C.mute))
+                }
+            }
         }
         Spacer(Modifier.height(12.dp))
     }
