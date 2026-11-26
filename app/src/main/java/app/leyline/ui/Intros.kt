@@ -42,6 +42,10 @@ fun introFor(tab: Int, over: Over?, trip: Boolean): Intro? = when (over) {
     is Over.Sanctum -> Intro("i.sanctum", "ic_shrine", tr("Святилище", "A sanctum"), listOf(
         "ic_shrine" to tr("Место, где поездки часто начинаются и кончаются. Пробуждается после трёх.", "A place where rides often start and end. It awakens after three."),
         "ward_grove" to tr("Поставьте оберег – и каждая поездка отсюда или сюда даст его ингредиент. Тот же оберег ещё раз – уровень выше.", "Place a ward and every ride from or to here gives its ingredient. The same ward again raises its level.")))
+    is Over.Folk, Over.FolkList -> Intro("i.folk", "ic_scroll", tr("Жители", "Residents"), listOf(
+        "ic_scroll" to tr("В кварталах, где вы бываете часто, появляются жители. У каждого – история из трёх просьб, и ни одна не горит.", "Residents turn up in quarters you ride through often. Each has a story of three requests, and none is in a hurry."),
+        "ic_compass" to tr("Письмо засчитывается, когда вы проедете через нужный квартал, а отчитаться можно откуда угодно. Остальное отдают на месте, в квартале жителя.", "A letter counts when you ride through its quarter, and you can report from anywhere. The rest is handed over in the resident's own quarter."),
+        "ic_star" to tr("Сразу можно вести до трёх просьб. Законченные истории остаются в книге благодарностей.", "You can carry up to three requests at once. Finished stories stay in the book of thanks.")))
     is Over.Recipe, is Over.Ingredient, is Over.Quarter, is Over.Station, Over.Spirits, Over.Omen, Over.Sigil, Over.Journal, Over.Settings, Over.Cozy -> null
     Over.Rides -> Intro("i.rides", "ic_compass", tr("В путь", "Setting off"), listOf(
         "mount_car_baby" to tr("Выберите, как едете. Первая поездка каждым способом выведет нового зверя.", "Pick how you ride. The first ride each way hatches a new beast."),

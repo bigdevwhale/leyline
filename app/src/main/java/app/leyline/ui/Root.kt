@@ -63,6 +63,9 @@ sealed interface Over {
     class Quarter(val id: String) : Over
     class Ingredient(val id: String) : Over
     class Recipe(val id: String) : Over
+    /** A quarter's resident, and all of them with the book of thanks. */
+    class Folk(val quarter: String) : Over
+    data object FolkList : Over
     /** By metro: the entrance or the exit station. */
     class Station(val exit: Boolean) : Over
 }
@@ -81,6 +84,8 @@ fun Root(s: State) {
             o == "sigil" -> Over.Sigil
             o == "journal" -> Over.Journal
             o == "cozy" -> Over.Cozy
+            o == "folk" -> Over.FolkList
+            o.startsWith("folk:") -> Over.Folk(o.substringAfter(':'))
             o.startsWith("spirit:") -> Over.Spirit(o.substringAfter(':'))
             o.startsWith("recipe:") -> Over.Recipe(o.substringAfter(':'))
             o.startsWith("ing:") -> Over.Ingredient(o.substringAfter(':'))
@@ -137,6 +142,8 @@ fun Root(s: State) {
             is Over.Quarter -> QuarterSheet(s, o.id, open = { over = it }) { over = null }
             is Over.Ingredient -> IngredientSheet(s, o.id) { over = null }
             is Over.Recipe -> RecipeSheet(s, o.id) { over = null }
+            is Over.Folk -> FolkSheet(s, o.quarter) { over = null }
+            Over.FolkList -> FolkListSheet(s, onOpen = { over = Over.Folk(it) }) { over = null }
             is Over.Station -> StationSheet(s, o.exit) { over = null }
         }
         // each screen introduces itself once; «?» brings it back

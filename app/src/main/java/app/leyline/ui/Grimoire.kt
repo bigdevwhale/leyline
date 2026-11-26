@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import app.leyline.data.State
 import app.leyline.domain.Book
 import app.leyline.domain.Cat
+import app.leyline.domain.Pages
 import app.leyline.domain.Recipe
 import app.leyline.domain.Spirits
 import app.leyline.domain.fmt
@@ -112,8 +113,19 @@ private fun Recipes(s: State, open: (Over) -> Unit) {
     val g = LocalGame
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
+        // a full page gives power once and a lasting favour; every page, the keeper's title
+        if (Pages.allFound(s)) Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).framed(14.dp).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Pic("ic_star", Modifier.size(34.dp)); Spacer(Modifier.width(10.dp))
+            Text(tr("Все рецепты найдены. Вы – ${Pages.keeper.lowercase()}.", "Every recipe found. You are the ${Pages.keeper.lowercase()}."), style = T.bodyB)
+        } else Text(tr("За заполненную страницу – ${Pages.SET_POWER} силы и подарок навсегда; за все рецепты – звание «${Pages.keeper}» и ${fmt(Pages.ALL_POWER)} силы.",
+            "A full page gives ${Pages.SET_POWER} power and a lasting gift; every recipe – the title «${Pages.keeper}» and ${fmt(Pages.ALL_POWER)} power."), style = T.small, modifier = Modifier.padding(top = 2.dp))
         Cat.entries.forEach { cat ->
-            Text(cat.plural, style = T.h3, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+            val full = cat in Pages.CATS && Pages.complete(s, cat)
+            Row(Modifier.padding(top = 6.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(cat.plural + " · " + Book.recipes.count { it.cat == cat && it.id in s.known } + "/" + Book.recipes.count { it.cat == cat }, style = T.h3)
+                if (full) { Spacer(Modifier.width(6.dp)); Pic("ic_star", Modifier.size(20.dp)) }
+            }
+            if (cat in Pages.CATS) Text((if (full) "" else tr("вся страница: ", "the full page: ")) + Pages.perk(cat), style = T.tiny.copy(color = if (full) C.teal else C.mute))
             val hidden = Book.recipes.count { it.cat == cat && it.id !in s.known }
             Book.recipes.filter { it.cat == cat && it.id in s.known }.forEach { r ->
                 val known = true

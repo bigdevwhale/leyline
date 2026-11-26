@@ -6,6 +6,7 @@ import app.leyline.domain.Book
 import app.leyline.domain.Cat
 import app.leyline.domain.Decor
 import app.leyline.domain.Decors
+import app.leyline.domain.Folk
 import app.leyline.domain.Kind
 import app.leyline.domain.Lab
 import app.leyline.domain.Ley
@@ -18,6 +19,7 @@ import app.leyline.domain.Metro
 import app.leyline.domain.Mount
 import app.leyline.domain.Mounts
 import app.leyline.domain.Omen
+import app.leyline.domain.Pages
 import app.leyline.domain.Quarters
 import app.leyline.domain.Ride
 import app.leyline.domain.Sanctum
@@ -101,13 +103,22 @@ class Game(private val app: Context, val scope: CoroutineScope) {
     }
 
     suspend fun edit(f: (State) -> State): State = lock.withLock {
-        val s = f(_state.value)
+        val s = upkeep(f(_state.value))
         _state.value = s
         save(s)
         s
     }
 
     fun write(f: (State) -> State) { scope.launch { edit(f) } }
+
+    /**
+     * What comes by itself after any change: a resident settles in a quarter visited often enough, a full page of
+     * the grimoire gives its gift once (also to those whose pages were full before it came in).
+     */
+    private fun upkeep(s0: State): State {
+        val s = Folk.settle(s0)
+        return Pages.grant(s) { news.tryEmit(News(it)) }
+    }
 
     // ---------- the city ----------
 
@@ -208,7 +219,8 @@ class Game(private val app: Context, val scope: CoroutineScope) {
             // a stand-in never replaces a kind already there. A real answer replaces a stand-in only while the
             // quarter hasn't been ridden through: a quarter seen as «riverside» in the morning mustn't come back
             // as «gardens» in the evening – its spirit, requests and ingredients hang on its kind.
-            val seen = q.kind != null && q.visits > 0
+            // and a kind picked by hand is never overruled
+            val seen = q.kind != null && (q.visits > 0 || q.changes > 0)
             if (real != null && seen) edit { s -> s.quarters[id]?.let { s.copy(quarters = s.quarters + (id to it.copy(guessed = false))) } ?: s }
             else if (real != null || q.kind == null) edit { s -> s.quarters[id]?.let { s.copy(quarters = s.quarters + (id to it.copy(kind = a, second = b, guessed = real == null))) } ?: s }
             tried[id] = System.currentTimeMillis()
@@ -226,7 +238,9 @@ class Game(private val app: Context, val scope: CoroutineScope) {
             val counted = t != null && id in t.quarters
             val upd = if (counted) qq else qq.copy(visits = qq.visits + 1, firstDay = if (qq.firstDay == 0L) today() else qq.firstDay)
             if (t != null && t.quarters.lastOrNull() != id) t = t.copy(quarters = t.quarters + id, fresh = if (fresh && id !in t.fresh) t.fresh + id else t.fresh)
-            s.copy(quarters = s.quarters + (id to upd), here = id, trip = t)
+            // a resident's letter is delivered, or a far ride made, by riding in
+            val s2 = s.copy(quarters = s.quarters + (id to upd), here = id, trip = t)
+            s2.copy(folk = Folk.entered(s2, id))
         }
         if (now.trip != null) news.tryEmit(News(if (fresh) tr("Новые земли: ${q.ru}", "New lands: ${q.en}") else q.name, speak = fresh))
     }
@@ -496,12 +510,13 @@ class Game(private val app: Context, val scope: CoroutineScope) {
             if (t.firstLat != 0.0) { val (l, x) = Sanctums.visit(sanctums, t.firstLat, t.firstLon, nid, t.start); sanctums = l; if (x.id == nid) nid++; startS = x.id }
             if (t.lastAt > 0) { val (l, x) = Sanctums.visit(sanctums, t.lastLat, t.lastLon, nid, end); sanctums = l; if (x.id == nid) nid++; endS = x.id }
             for (id in setOf(startS, endS)) sanctums.firstOrNull { it.id == id && it.ward.isNotEmpty() }?.let { sc ->
-                val ing = wardIng(sc.ward); extra[ing] = (extra[ing] ?: 0) + sc.wardLevel
+                val ing = wardIng(sc.ward); extra[ing] = (extra[ing] ?: 0) + sc.wardLevel + if (Pages.complete(s, Cat.WARD)) 1 else 0
             }
             sanctums.firstOrNull { it.id == endS && it.visits == Sanctums.AWAKE }?.let { notes += "Пробудилось новое святилище|A new sanctum has awakened" }
             // spirits that are friends add theirs for every quarter of their kind passed
             val kinds = t.quarters.distinct().mapNotNull { s.quarters[it]?.kind }.toSet()
-            for (k in kinds) if ((s.spirits[k.id] ?: -1) >= 4) { val ing = Book.of(k); extra[ing] = (extra[ing] ?: 0) + 1 }
+            val friendly = Spirits.friendGift(s)
+            for (k in kinds) if ((s.spirits[k.id] ?: -1) >= 4) { val ing = Book.of(k); extra[ing] = (extra[ing] ?: 0) + friendly }
             // the quarter that blooms this week gives its gift once a day
             Luck.bloom(s.quarters.values.filter { it.visits > 0 }.map { it.id }, dayOf(t.start))?.let { (q, ing) ->
                 if (q in t.quarters && s.bloomDay != dayOf(t.start)) {
@@ -535,7 +550,7 @@ class Game(private val app: Context, val scope: CoroutineScope) {
             var power = (t.km * 10).toInt() + (t.knots * 2).coerceAtMost(20) + t.newCells
             if ((s.buffs["tailwind"] ?: 0) > 0) power *= 2
             power = (power * Decors.bonus(s.decor.size)).toInt() + bonusPower
-            val xp = t.km * (if ((s.buffs["longroad"] ?: 0) > 0) 1.5 else 1.0) * (if (s.great) 1.1 else 1.0)
+            val xp = t.km * (if ((s.buffs["longroad"] ?: 0) > 0) 1.5 else 1.0) * (if (s.great) 1.1 else 1.0) * (if (Pages.complete(s, Cat.AWAKEN)) 1.1 else 1.0)
             // the beast
             val b = t.beast.id
             val m0 = s.mounts[b] ?: Mount(b, born = t.start)
@@ -728,7 +743,7 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         val have = s.stock[id] ?: 0
         val r = Book.recipe[id]
         if (have <= 0 || r?.cat != Cat.ELIXIR) return@write s
-        val rides = if (id == "tailwind" || id == "longroad") 3 else 1
+        val rides = (if (id == "tailwind" || id == "longroad") 3 else 1) + (if (Pages.complete(s, Cat.ELIXIR)) 1 else 0)
         s.copy(stock = (s.stock + (id to have - 1)).filterValues { it > 0 }, buffs = s.buffs + (id to (s.buffs[id] ?: 0) + rides))
     }
 
@@ -751,9 +766,76 @@ class Game(private val app: Context, val scope: CoroutineScope) {
         s.copy(stock = (s.stock + (ward to have - 1)).filterValues { it > 0 }, sanctums = s.sanctums.map { if (it.id == sanctum) upd else it })
     }
 
+    /** Lets a stray sanctum go out, with its ward; rides starting or ending there again begin a new one. */
+    fun forget(sanctum: Long) = write { s -> s.copy(sanctums = s.sanctums.filter { it.id != sanctum }) }
+
     fun rename(sanctum: Long, name: String) = write { s -> s.copy(sanctums = s.sanctums.map { if (it.id == sanctum) it.copy(name = name.trim().take(30)) else it }) }
 
     fun renameBeast(beast: String, name: String) = write { s -> s.mounts[beast]?.let { s.copy(mounts = s.mounts + (beast to it.copy(name = name.trim().take(20)))) } ?: s }
+
+    /**
+     * You name the quarter's kind yourself: the map may call a whole district «gardens» for its lawns. Its second
+     * kind stays unless it is the new one; the first change is free, the rest cost power.
+     */
+    suspend fun rekind(id: String, k: Kind): Boolean {
+        var ok = false
+        edit { s ->
+            val q = s.quarters[id] ?: return@edit s
+            val price = Quarters.rekindPrice(q)
+            if (q.kind == null || q.kind == k || s.power < price) return@edit s
+            ok = true
+            val second = q.second?.takeIf { it != k } ?: q.kind
+            s.copy(power = s.power - price, quarters = s.quarters + (id to q.copy(kind = k, second = second, guessed = false, changes = q.changes + 1)))
+        }
+        return ok
+    }
+
+    // ---------- the residents ----------
+
+    /** Takes the resident's current request; a letter gets its quarter now (the one its words already name). */
+    suspend fun takeErrand(quarter: String): Boolean {
+        var ok = false
+        edit { s ->
+            val e = Folk.at(s, quarter) ?: return@edit s
+            if (e.since > 0 || Folk.done(e) || Folk.taken(s) >= Folk.MAX_TAKEN) return@edit s
+            var e2 = e.copy(since = System.currentTimeMillis(), arrived = false)
+            if (Folk.step(e)?.ask == Folk.Ask.Letter) {
+                val target = Folk.pickTarget(s, e)
+                if (target.isEmpty()) return@edit s
+                e2 = e2.copy(target = target)
+            }
+            ok = true
+            s.copy(folk = s.folk.map { if (it.quarter == quarter) e2 else it })
+        }
+        return ok
+    }
+
+    /** Reports back: ingredients or the potion are handed over, the reward comes, the next request waits to be taken. */
+    suspend fun claimErrand(quarter: String): Boolean {
+        var ok = false
+        edit { s ->
+            val e = Folk.at(s, quarter) ?: return@edit s
+            if (!Folk.ready(s, e)) return@edit s
+            val i = e.step
+            var bag = s.bag
+            var stock = s.stock
+            when (val a = Folk.step(e)?.ask) {
+                is Folk.Ask.Give -> bag = (bag + (a.ing to s.has(a.ing) - a.n)).filterValues { it > 0 }
+                is Folk.Ask.Potion -> stock = (stock + (a.recipe to (stock[a.recipe] ?: 0) - 1)).filterValues { it > 0 }
+                else -> {}
+            }
+            val gift = Folk.gift(s, e)
+            if (gift != null) bag = bag + (gift to (bag[gift] ?: 0) + Folk.gifts[i])
+            ok = true
+            val next = e.copy(step = i + 1, since = 0, arrived = false)
+            val who = Folk.of(e)
+            news.tryEmit(News(if (Folk.done(next)) tr("${who.ru}: «${who.thanksRu}»", "${who.en}: «${who.thanksEn}»")
+                else tr("${who.ru} благодарит: +${Folk.power[i]} силы", "${who.en} thanks you: +${Folk.power[i]} power")))
+            s.copy(bag = bag, stock = stock, power = s.power + Folk.power[i], seen = s.seen + listOfNotNull(gift),
+                folk = s.folk.map { if (it.quarter == quarter) next else it })
+        }
+        return ok
+    }
 
     suspend fun reset() = edit { State(theme = it.theme, voice = it.voice) }
 

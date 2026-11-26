@@ -112,6 +112,14 @@ fun Tower(s: State, open: (Over) -> Unit) {
                     Pic("decor_lamp", Modifier.size(36.dp))
                     if (Decors.all.any { g.canBuy(s, it) }) Box(Modifier.align(Alignment.TopEnd).size(13.dp).clip(CircleShape).background(C.glow))
                 }
+                // the residents and their long errands, once the first has settled in
+                if (s.folk.isNotEmpty()) {
+                    Spacer(Modifier.width(8.dp))
+                    Box(Modifier.size(52.dp).clip(CircleShape).background(Color(0xCC2A1F33)).border(1.dp, C.glow.copy(alpha = 0.7f), CircleShape).clickable { open(Over.FolkList) }, contentAlignment = Alignment.Center) {
+                        Pic("ic_scroll", Modifier.size(34.dp))
+                        if (s.folk.any { app.leyline.domain.Folk.ready(s, it) }) Box(Modifier.align(Alignment.TopEnd).size(13.dp).clip(CircleShape).background(C.glow))
+                    }
+                }
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     s.buffs.forEach { (id, n) -> Pill(Book.recipe(id).pic, "×$n") { open(Over.Recipe(id)) } }

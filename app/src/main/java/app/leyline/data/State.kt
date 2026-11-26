@@ -20,6 +20,8 @@ data class Quarter(
     val firstDay: Long = 0,
     /** The kind is a stand-in: the map server didn't answer, it will be asked again. */
     val guessed: Boolean = false,
+    /** Times its kind was changed by hand: the first is free, the rest cost [app.leyline.domain.Quarters.REKIND] power. */
+    val changes: Int = 0,
 ) {
     val name get() = app.leyline.domain.tr(ru, en)
     val known get() = kind != null
@@ -72,6 +74,13 @@ data class Trip(
     val km get() = meters / 1000
     val beast get() = app.leyline.domain.Ride.of(ride).beast
 }
+
+/**
+ * A resident's story in quarter [quarter] (see [app.leyline.domain.Folk]): resident [who], at request [step];
+ * [since] is when it was taken (0 – not yet), [target] the letter's quarter, [arrived] – the letter is delivered
+ * or the far ride made.
+ */
+data class Errand(val quarter: String, val who: Int, val step: Int = 0, val since: Long = 0, val target: String = "", val arrived: Boolean = false)
 
 data class State(
     val onboarded: Boolean = false,
@@ -127,6 +136,8 @@ data class State(
     /** The underground's stations around home, for rides by metro, and when they were loaded. */
     val stations: List<Station> = emptyList(),
     val stationsAt: Long = 0,
+    /** The residents and their errands. */
+    val folk: List<Errand> = emptyList(),
 ) {
     fun has(ing: String) = bag[ing] ?: 0
     fun friends() = spirits.filterValues { it >= 4 }.keys
@@ -144,10 +155,10 @@ private fun List<Pair<Double, Double>>.flat() = JSONArray().also { a -> forEach 
 private fun JSONArray?.pairs(): List<Pair<Double, Double>> = if (this == null) emptyList() else (0 until length() / 2).map { getDouble(it * 2) to getDouble(it * 2 + 1) }
 
 fun Quarter.json() = JSONObject().put("id", id).put("ru", ru).put("en", en).put("lat", lat).put("lon", lon)
-    .put("kind", kind?.id ?: "").put("second", second?.id ?: "").put("visits", visits).put("firstDay", firstDay).put("guessed", guessed)
+    .put("kind", kind?.id ?: "").put("second", second?.id ?: "").put("visits", visits).put("firstDay", firstDay).put("guessed", guessed).put("changes", changes)
 
 fun quarterOf(o: JSONObject) = Quarter(o.str("id"), o.str("ru"), o.str("en"), o.getDouble("lat"), o.getDouble("lon"),
-    Kind.of(o.str("kind")), Kind.of(o.str("second")), o.optInt("visits"), o.optLong("firstDay"), o.optBoolean("guessed"))
+    Kind.of(o.str("kind")), Kind.of(o.str("second")), o.optInt("visits"), o.optLong("firstDay"), o.optBoolean("guessed"), o.optInt("changes"))
 
 fun Trip.json(): JSONObject = JSONObject().put("start", start).put("end", end).put("ride", ride).put("meters", meters).put("fast", fastMeters)
     .put("jam", jamSec).put("jamWait", jamWait).put("under", underground).put("weather", weather).put("temp", if (temp.isNaN()) JSONObject.NULL else temp)
@@ -184,6 +195,9 @@ fun Station.json() = JSONObject().put("ru", ru).put("en", en).put("lat", lat).pu
 
 fun stationOf(o: JSONObject) = Station(o.str("ru"), o.str("en"), o.getDouble("lat"), o.getDouble("lon"))
 
+fun Errand.json() = JSONObject().put("quarter", quarter).put("who", who).put("step", step).put("since", since).put("target", target).put("arrived", arrived)
+fun errandOf(o: JSONObject) = Errand(o.str("quarter"), o.optInt("who"), o.optInt("step"), o.optLong("since"), o.str("target"), o.optBoolean("arrived"))
+
 fun State.json(): JSONObject = JSONObject()
     .put("v", 1).put("onboarded", onboarded).put("homeLat", homeLat).put("homeLon", homeLon)
     .put("quarters", JSONArray(quarters.values.map { it.json() })).put("here", here).put("power", power)
@@ -198,6 +212,7 @@ fun State.json(): JSONObject = JSONObject()
     .put("btAddr", btAddr).put("btName", btName).put("reach", reach).put("placesV", 2).put("aurora", aurora).put("mirror", mirror).put("great", great).put("lastCell", lastCell)
     .put("tried", JSONArray(tried.toList())).put("decor", JSONArray(decor.toList())).put("bloomDay", bloomDay)
     .put("stations", JSONArray(stations.map { it.json() })).put("stationsAt", stationsAt)
+    .put("folk", JSONArray(folk.map { it.json() }))
 
 fun stateOf(o: JSONObject) = State(
     onboarded = o.optBoolean("onboarded"), homeLat = o.optDouble("homeLat", 0.0), homeLon = o.optDouble("homeLon", 0.0),
@@ -215,4 +230,5 @@ fun stateOf(o: JSONObject) = State(
     aurora = o.optBoolean("aurora"), mirror = o.optBoolean("mirror"), great = o.optBoolean("great"), lastCell = o.str("lastCell"),
     tried = o.optJSONArray("tried").strings().toSet(), decor = o.optJSONArray("decor").strings().toSet(), bloomDay = o.optLong("bloomDay"),
     stations = o.optJSONArray("stations").list(::stationOf), stationsAt = o.optLong("stationsAt"),
+    folk = o.optJSONArray("folk").list(::errandOf),
 )

@@ -102,6 +102,9 @@ object Spirits {
     /** What finishing step [i] brings: power and some of the spirit's ingredient. */
     fun reward(i: Int): Pair<Int, Int> = when (i) { 0 -> 50 to 2; 1 -> 100 to 2; 2 -> 150 to 3; else -> 300 to 5 }
 
-    fun friendLine(sp: Spirit) = tr("Друг: +1 ${Book.ing(sp.ing).ru.lowercase()} в каждой поездке через его кварталы",
-        "Friend: +1 ${Book.ing(sp.ing).en.lowercase()} on every ride through its quarters")
+    /** What a friendly spirit gives on a ride through its quarters: one, two with the full page of gifts. */
+    fun friendGift(s: app.leyline.data.State) = if (Pages.complete(s, Cat.GIFT)) 2 else 1
+
+    fun friendLine(sp: Spirit, n: Int = 1) = tr("Друг: +$n ${Book.ing(sp.ing).ru.lowercase()} в каждой поездке через его кварталы",
+        "Friend: +$n ${Book.ing(sp.ing).en.lowercase()} on every ride through its quarters")
 }

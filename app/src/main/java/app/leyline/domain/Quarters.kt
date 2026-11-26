@@ -82,13 +82,15 @@ object Quarters {
     }
 
     private val CATS = linkedMapOf(
-        Kind.GARDEN to ("nwr(around:R,P)[leisure~\"^(park|garden)$\"];way(around:R,P)[landuse~\"^(forest|grass|meadow|recreation_ground)$\"];way(around:R,P)[natural=wood];" to 1 / 100.0),
+        // lawns (landuse=grass, meadow) are everywhere – between blocks, along roads, round runways – and made most of a
+        // city «gardens»: only parks, gardens and woods count
+        Kind.GARDEN to ("nwr(around:R,P)[leisure~\"^(park|garden)$\"];way(around:R,P)[landuse~\"^(forest|recreation_ground)$\"];way(around:R,P)[natural=wood];" to 1 / 35.0),
         Kind.WATER to ("way(around:R,P)[waterway~\"^(river|canal)$\"];nwr(around:R,P)[natural=water];way(around:R,P)[man_made=pier];" to 1 / 8.0),
         Kind.OLD to ("nwr(around:R,P)[historic];nwr(around:R,P)[tourism=museum];nwr(around:R,P)[amenity=place_of_worship];" to 1 / 40.0),
         Kind.SCHOLAR to ("nwr(around:R,P)[amenity~\"^(university|college|library)$\"];nwr(around:R,P)[office=research];" to 1 / 8.0),
         Kind.FORGE to ("way(around:R,P)[landuse~\"^(industrial|railway)$\"];nwr(around:R,P)[man_made~\"^(works|chimney)$\"];nwr(around:R,P)[craft];" to 1 / 20.0),
         Kind.BAZAAR to ("nwr(around:R,P)[amenity=marketplace];nwr(around:R,P)[shop~\"^(mall|department_store)$\"];node(around:R,P)[shop];" to 1 / 300.0),
-        Kind.GATE to ("nwr(around:R,P)[railway~\"^(station|halt)$\"];nwr(around:R,P)[amenity=bus_station];nwr(around:R,P)[public_transport=station];" to 1 / 2.0),
+        Kind.GATE to ("nwr(around:R,P)[railway~\"^(station|halt)$\"];nwr(around:R,P)[amenity=bus_station];nwr(around:R,P)[public_transport=station];nwr(around:R,P)[aeroway~\"^(aerodrome|terminal|runway|apron)$\"];" to 1 / 2.0),
         Kind.HOMES to ("way(around:R,P)[building~\"^(apartments|residential|house)$\"];" to 1 / 200.0),
     )
 
@@ -116,6 +118,10 @@ object Quarters {
         val a = Kind.entries[r.int(Kind.entries.size)]
         return a to a.near[r.int(2)]
     }
+
+    /** What changing a quarter's kind by hand costs in power after the first, free time. */
+    const val REKIND = 300
+    fun rekindPrice(q: Quarter) = if (q.changes == 0) 0 else REKIND
 
     /** A ride this far from every quarter opens a new one on the spot. */
     const val GAP = 1500.0

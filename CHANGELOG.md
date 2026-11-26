@@ -6,6 +6,24 @@ line "<!-- tg", then 2-4 short lines in Russian for users (what is new, what is 
 then close it like any HTML comment. The release notes carry it, and the chat bot posts those lines.
 -->
 
+## [1.2.0] - 2026-11-26
+
+### Added
+- **Residents with long errands.** Twelve townsfolk settle in the quarters you ride through often (three rides and more), one each. Every one has a little story in three requests with no deadline: carry a letter to a quarter 2–8 km away (it counts when you ride through, and you can report from anywhere), bring ingredients, ride somewhere at least 5 km off and come back, or bring an elixir from the cauldron – the youngest daughter's «little scarlet flower». Up to three at a time; rewards of 50, 90 and 160 power and the quarter's own ingredient. Finished stories go into the book of thanks. A scroll in the tower opens them, and a quarter's page shows its resident.
+- **Full pages of the grimoire.** Every recipe of a kind found gives 250 power once and a lasting favour: elixirs work one ride longer, beasts grow 10% faster, wards give one more, friendly spirits give two. Every recipe – the title «Keeper of the grimoire» and 1000 power. Pages filled before count too.
+- **Change a quarter's kind by hand.** On a quarter's page: the first change is free, later ones cost 300 power. The map never overrules a kind you picked.
+- **Forget a sanctum.** A stray place (a one-off stop, an old job) can be let go at the bottom of its page, ward and all; rides from it again awaken it anew.
+
+### Fixed
+- **Far fewer «gardens».** Lawns and meadows are everywhere – between blocks, along roads, round runways – and turned most of a city into gardens. Only parks, gardens and woods count now, and airports are «Gates».
+
+<!-- tg
+Новое: жители кварталов с долгими поручениями без срока – письма, ингредиенты, дальние поездки и «аленький цветочек»
+За заполненную страницу гримуара – сила и подарок навсегда, за все рецепты – звание «Хранитель гримуара»
+Вид квартала можно сменить вручную, лишнее святилище – забыть
+Исправлено: кварталы реже оказываются «садами», аэропорты теперь «Ворота»
+-->
+
 ## [1.1.2] - 2026-11-25
 
 ### Fixed
