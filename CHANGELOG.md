@@ -13,6 +13,9 @@ then close it like any HTML comment. The release notes carry it, and the chat bo
 - **Clues to recipes.** Each of a spirit's first three requests, every beast's awakening and the end of a resident's story tell one ingredient of a recipe not found yet («one of the elixirs takes wind»). The grimoire shows such pages as «? + wind + ?». The last ingredient of a page is never told – it is still found in the cauldron (#6).
 - **From where to where.** The road journal and a ride's card show the quarters a ride went from and to, the time it ended, and what it brought; an hourglass in the tower opens the journal (#7).
 
+### Fixed
+- **Messages no longer cover each other.** When one tap said several things at once (a reward, a clue, a full page), only the last was seen; they now come one after another.
+
 <!-- tg
 Гримуар запоминает все опыты: брак, его название и подсказку котла – на странице «Опыты»
 Духи, звери при пробуждении и жители теперь дают подсказки к рецептам: какой ингредиент идёт в ещё не найденное зелье

@@ -100,10 +100,10 @@ fun Root(s: State) {
     val live by c.game.live.collectAsState()
     val locked = s.trip?.let { app.leyline.domain.Ride.of(it.ride).driver } == true && live.moving
     var toast by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) { c.game.news.collect { toast = it.text } }
+    // one at a time: a reward can say three things at once (the power, a clue, a full page), and each is read in turn
+    LaunchedEffect(Unit) { c.game.news.collect { toast = it.text; delay(2600); toast = null; delay(150) } }
     // the metro's stations are loaded ahead, while there is a network and time: underground there may be neither
     LaunchedEffect(s.homeLat) { if (s.homeLat != 0.0) c.game.stations() }
-    LaunchedEffect(toast) { if (toast != null) { delay(2600); toast = null } }
     LaunchedEffect(finished) { finished?.let { over = Over.TripPage(it); Nav.tab = 0; c.game.finished.value = null } }
     BackHandler(tab != 0 && over == null) { Nav.tab = 0 }
 
